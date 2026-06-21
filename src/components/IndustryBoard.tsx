@@ -6,9 +6,15 @@ interface IndustryBoardProps {
   stocks: Stock[];
   onSelectIndustry: (industry: string) => void;
   countdown: number;
+  isRefreshPaused?: boolean;
 }
 
-export default function IndustryBoard({ stocks, onSelectIndustry, countdown }: IndustryBoardProps) {
+export default function IndustryBoard({
+  stocks,
+  onSelectIndustry,
+  countdown,
+  isRefreshPaused = false,
+}: IndustryBoardProps) {
   // Compute average returns for each industry
   const industriesStats = React.useMemo(() => {
     const map: Record<string, { totalChange: number; count: number }> = {};
@@ -49,15 +55,30 @@ export default function IndustryBoard({ stocks, onSelectIndustry, countdown }: I
         {/* Real-time Status */}
         <div className="flex items-center gap-3 bg-[#1E222D] px-3 py-1.5 rounded-full border border-[#2D3139] self-start md:self-auto">
           <div className="flex items-center gap-2">
-            <RefreshCw size={14} className="text-[#089981] animate-spin" style={{ animationDuration: "3s" }} />
-            <span className="text-xs font-mono text-slate-450">
-              🔄 系統自動刷新中 ({countdown}s)
-            </span>
+            {isRefreshPaused ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-[#eab308]" />
+                <span className="text-xs font-mono text-slate-400">
+                  ⏸ 盤後暫停 (等候開盤)
+                </span>
+              </>
+            ) : (
+              <>
+                <RefreshCw size={12} className="text-[#089981] animate-spin" style={{ animationDuration: "3s" }} />
+                <span className="text-xs font-mono text-slate-300">
+                  {countdown === 5 ? (
+                    <span className="text-[#089981] font-bold">● 即時計算中</span>
+                  ) : (
+                    `🔄 系統自動刷新中 (${countdown}s)`
+                  )}
+                </span>
+              </>
+            )}
           </div>
           <div className="w-16 h-1.5 bg-[#2D3139] rounded-full overflow-hidden">
             <div 
-              className="h-full bg-gradient-to-r from-[#2962FF] to-[#089981] transition-all duration-1000"
-              style={{ width: `${(countdown / 5) * 100}%` }}
+              className={`h-full bg-gradient-to-r from-[#2962FF] to-[#089981] transition-all duration-1000 ${isRefreshPaused ? "opacity-30" : ""}`}
+              style={{ width: isRefreshPaused ? "100%" : `${(countdown / 5) * 100}%` }}
             />
           </div>
         </div>

@@ -363,7 +363,12 @@ export function generateStockMarket(): Stock[] {
         { symbol: "6415", name: "矽力*-KY", basePrice: 380 },
         { symbol: "3529", name: "力旺", basePrice: 2200 },
         { symbol: "2308", name: "台達電", basePrice: 340 },
-        { symbol: "5347", name: "世界", basePrice: 82 }
+        { symbol: "5347", name: "世界", basePrice: 82 },
+        { symbol: "2337", name: "旺宏", basePrice: 26 },
+        { symbol: "2449", name: "京元電子", basePrice: 90 },
+        { symbol: "3006", name: "晶豪科", basePrice: 75 },
+        { symbol: "3264", name: "欣銓", basePrice: 65 },
+        { symbol: "6271", name: "同欣電", basePrice: 140 }
       ]
     },
     {
@@ -378,7 +383,12 @@ export function generateStockMarket(): Stock[] {
         { symbol: "2376", name: "技嘉", basePrice: 285 },
         { symbol: "2357", name: "華碩", basePrice: 470 },
         { symbol: "3017", name: "奇鋐", basePrice: 620 },
-        { symbol: "3324", name: "雙鴻", basePrice: 680 }
+        { symbol: "3324", name: "雙鴻", basePrice: 680 },
+        { symbol: "2324", name: "仁寶", basePrice: 35 },
+        { symbol: "2353", name: "宏碁", basePrice: 42 },
+        { symbol: "3013", name: "晟銘電", basePrice: 85 },
+        { symbol: "2421", name: "建準", basePrice: 110 },
+        { symbol: "5243", name: "乙盛-KY", basePrice: 55 }
       ]
     },
     {
@@ -393,7 +403,12 @@ export function generateStockMarket(): Stock[] {
         { symbol: "6278", name: "台表科", basePrice: 112 },
         { symbol: "3673", name: "TPK-KY", basePrice: 38 },
         { symbol: "4956", name: "光鋐", basePrice: 25 },
-        { symbol: "2489", name: "瑞軒", basePrice: 19 }
+        { symbol: "2489", name: "瑞軒", basePrice: 19 },
+        { symbol: "3380", name: "明基材", basePrice: 32 },
+        { symbol: "4960", name: "誠美材", basePrice: 13 },
+        { symbol: "6116", name: "彩晶", basePrice: 9 },
+        { symbol: "3059", name: "華晶科", basePrice: 31 },
+        { symbol: "3591", name: "艾笛森", basePrice: 18 }
       ]
     },
     {
@@ -408,7 +423,12 @@ export function generateStockMarket(): Stock[] {
         { symbol: "4743", name: "合一", basePrice: 135 },
         { symbol: "4104", name: "佳醫", basePrice: 72 },
         { symbol: "3176", name: "基亞", basePrice: 48 },
-        { symbol: "1752", name: "南光", basePrice: 44 }
+        { symbol: "1752", name: "南光", basePrice: 44 },
+        { symbol: "1795", name: "美時", basePrice: 280 },
+        { symbol: "4105", name: "東洋", basePrice: 76 },
+        { symbol: "4119", name: "旭富", basePrice: 80 },
+        { symbol: "4107", name: "邦特", basePrice: 115 },
+        { symbol: "1701", name: "中化", basePrice: 25 }
       ]
     },
     {
@@ -423,7 +443,12 @@ export function generateStockMarket(): Stock[] {
         { symbol: "2606", name: "裕民", basePrice: 55 },
         { symbol: "2637", name: "慧洋-KY", basePrice: 62 },
         { symbol: "2612", name: "中航", basePrice: 34 },
-        { symbol: "2642", name: "宅配通", basePrice: 37 }
+        { symbol: "2642", name: "宅配通", basePrice: 37 },
+        { symbol: "5608", name: "四維航", basePrice: 18 },
+        { symbol: "2614", name: "東森", basePrice: 19 },
+        { symbol: "2617", name: "台航", basePrice: 31 },
+        { symbol: "2607", name: "榮運", basePrice: 30 },
+        { symbol: "2636", name: "台驊投控", basePrice: 95 }
       ]
     },
     {
@@ -438,7 +463,12 @@ export function generateStockMarket(): Stock[] {
         { symbol: "2885", name: "元大金", basePrice: 30 },
         { symbol: "2880", name: "華南金", basePrice: 25 },
         { symbol: "2883", name: "凱基金", basePrice: 15 },
-        { symbol: "2887", name: "台新金", basePrice: 18 }
+        { symbol: "2887", name: "台新金", basePrice: 18 },
+        { symbol: "2801", name: "彰銀", basePrice: 18 },
+        { symbol: "2834", name: "臺企銀", basePrice: 16 },
+        { symbol: "2888", name: "新光金", basePrice: 9 },
+        { symbol: "2889", name: "國票金", basePrice: 15 },
+        { symbol: "2812", name: "台中銀", basePrice: 17 }
       ]
     }
   ];

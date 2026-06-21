@@ -13,12 +13,69 @@ import StockTable from "./components/StockTable";
 import StockChart from "./components/StockChart";
 import { TrendingUp, RefreshCw, BarChart3, Radio, Info } from "lucide-react";
 
+// Helper to compute Taiwan time status (UTC+8)
+const getTaiwanMarketStatus = () => {
+  try {
+    const formattedStr = new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei" });
+    const twDate = new Date(formattedStr);
+    
+    const day = twDate.getDay(); // 0: Sun, 1: Mon, ..., 6: Sat
+    const hours = twDate.getHours();
+    const minutes = twDate.getMinutes();
+    
+    const isWeekday = day >= 1 && day <= 5;
+    const timeInMinutes = hours * 60 + minutes;
+    
+    // Taiwan Standard Trading Hours: Monday - Friday, 09:00 - 13:30 (540 mins to 810 mins)
+    const startMins = 9 * 60;
+    const endMins = 13 * 60 + 30;
+    const isTradingHours = isWeekday && (timeInMinutes >= startMins && timeInMinutes <= endMins);
+    
+    const twTimeStr = twDate.toLocaleTimeString("zh-TW", { hour12: false });
+    const twDateStr = twDate.toLocaleDateString("zh-TW");
+    const weekdays = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+    const weekdayString = weekdays[day];
+
+    return {
+      isTradingHours,
+      timeString: twTimeStr,
+      dateString: twDateStr,
+      weekdayString,
+      isWeekday,
+    };
+  } catch (err) {
+    const now = new Date();
+    const day = now.getDay();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const isWeekday = day >= 1 && day <= 5;
+    const isTradingHours = isWeekday && ((hours * 60 + minutes) >= 540 && (hours * 60 + minutes) <= 810);
+    return {
+      isTradingHours,
+      timeString: now.toLocaleTimeString("zh-TW", { hour12: false }),
+      dateString: now.toLocaleDateString("zh-TW"),
+      weekdayString: ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"][day],
+      isWeekday,
+    };
+  }
+};
+
 export default function App() {
   const [stocks, setStocks] = React.useState<Stock[]>([]);
   const [keyword, setKeyword] = React.useState<string>("");
   const [selectedStock, setSelectedStock] = React.useState<Stock | null>(null);
   const [showOnlyMatches, setShowOnlyMatches] = React.useState<boolean>(true);
   const [countdown, setCountdown] = React.useState<number>(5);
+  const [marketMode, setMarketMode] = React.useState<"strict" | "always">("strict");
+  const [twStatus, setTwStatus] = React.useState(getTaiwanMarketStatus());
+
+  // Update Taiwan Clock status every second
+  React.useEffect(() => {
+    const clockInterval = setInterval(() => {
+      setTwStatus(getTaiwanMarketStatus());
+    }, 1000);
+    return () => clearInterval(clockInterval);
+  }, []);
 
   // Initialize stock database on mount
   React.useEffect(() => {
@@ -60,11 +117,18 @@ export default function App() {
     }
   };
 
-  // Live price fluctuation interval ticker (Runs every 5 seconds)
+  // Live price fluctuation interval ticker (Runs every 1 second)
   // Simulates minor disc-fluctuation during active trading session
   React.useEffect(() => {
     const interval = setInterval(() => {
       setCountdown((prev) => {
+        const isTrading = twStatus.isTradingHours;
+        const shouldTick = marketMode === "always" || isTrading;
+        
+        if (!shouldTick) {
+          return 5; // Hold at 5 (paused state)
+        }
+        
         if (prev <= 1) {
           return 5; // Reset timer count
         }
@@ -73,7 +137,7 @@ export default function App() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [marketMode, twStatus.isTradingHours]);
 
   // Update prices periodically when the countdown resets
   React.useEffect(() => {
@@ -158,15 +222,63 @@ export default function App() {
             </div>
           </div>
           
-          <div className="flex items-center gap-3 text-xs text-slate-400 self-start sm:self-auto font-mono bg-[#1E222D] p-2 rounded border border-[#2D3139]">
-            <div>
-              <span className="text-slate-500">當前日期:</span>{" "}
-              <span className="text-slate-300 font-bold">2026-06-20</span>
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 text-xs font-mono">
+            {/* Live Clock and Status Indicator */}
+            <div className="flex items-center gap-2 bg-[#1E222D] px-2.5 py-1.5 rounded border border-[#2D3139]">
+              <span className="flex h-2 w-2 relative">
+                {twStatus.isTradingHours ? (
+                  <>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#089981] opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#089981]"></span>
+                  </>
+                ) : (
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#eab308]"></span>
+                )}
+              </span>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px]">
+                  <span className="text-slate-500 font-bold">台北時間:</span>
+                  <span className="text-slate-300 font-bold">{twStatus.dateString} ({twStatus.weekdayString}) {twStatus.timeString}</span>
+                </div>
+                <div className="text-[9px] text-slate-500 flex items-center gap-1">
+                  <span>台股盤中時段: 一至五 09:00-13:30</span>
+                  <span className={twStatus.isTradingHours ? "text-[#089981] font-semibold animate-pulse" : "text-yellow-500 font-semibold"}>
+                    ({twStatus.isTradingHours ? "交易中" : "已收盤"})
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="border-l border-[#2D3139] h-3" />
-            <div>
-              <span className="text-slate-500">市場成分股:</span>{" "}
-              <span className="text-[#2962FF] font-bold">60 檔</span>
+
+            {/* Mode Selector Pill Buttons */}
+            <div className="flex bg-[#1E222D] p-0.5 rounded border border-[#2D3139] items-center text-[10px]">
+              <button
+                onClick={() => setMarketMode("strict")}
+                className={`px-2 py-1 rounded transition-colors ${
+                  marketMode === "strict"
+                    ? "bg-[#2962FF] text-white font-bold"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+                title="只在台北時間週一至週五 09:00-13:30 期間刷新股價，其餘休市時間靜止"
+              >
+                真實時間連動
+              </button>
+              <button
+                onClick={() => setMarketMode("always")}
+                className={`px-2 py-1 rounded transition-colors ${
+                  marketMode === "always"
+                    ? "bg-[#2962FF] text-white font-bold"
+                    : "text-slate-400 hover:text-slate-200"
+                }`}
+                title="忽視當前時間，全天候 24/7 持續模擬盤中股價波動刷新數據"
+              >
+                全天候模擬
+              </button>
+            </div>
+
+            {/* Component statistics indicator */}
+            <div className="hidden lg:flex items-center bg-[#1E222D] px-2.5 py-2 rounded border border-[#2D3139] text-[10px] gap-1">
+              <span className="text-slate-500">成分股:</span>
+              <span className="text-white font-bold">{stocks.length} 檔</span>
             </div>
           </div>
         </div>
@@ -179,6 +291,7 @@ export default function App() {
           stocks={stocks}
           onSelectIndustry={handleSelectIndustry}
           countdown={countdown}
+          isRefreshPaused={marketMode === "strict" && !twStatus.isTradingHours}
         />
 
         {/* MIDDLE: Advanced Screener Command Console */}
@@ -187,6 +300,7 @@ export default function App() {
           setKeyword={setKeyword}
           onRunScreener={handleRunScreener}
           matchCount={matchCount}
+          totalCount={stocks.length}
         />
 
         {/* BOTTOM: Split-pane Workspace (Left: Sorter spreadsheet, Right: TradingView Light chart) */}
@@ -204,7 +318,7 @@ export default function App() {
           </section>
 
           {/* RIGHT PANEL: Live Candlestick Graph (5 cols) */}
-          <section className="lg:col-span-5 flex flex-col min-h-[420px]">
+          <section className="lg:col-span-5 flex flex-col min-h-[420px]" key={activeSelectedStock?.symbol || "empty"}>
             <StockChart
               selectedStock={activeSelectedStock}
               filterResults={filterResults}

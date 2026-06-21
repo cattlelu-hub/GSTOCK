@@ -6,6 +6,7 @@ interface ScreenerControlProps {
   setKeyword: (kw: string) => void;
   onRunScreener: () => void;
   matchCount: number;
+  totalCount?: number;
 }
 
 export default function ScreenerControl({
@@ -13,6 +14,7 @@ export default function ScreenerControl({
   setKeyword,
   onRunScreener,
   matchCount,
+  totalCount = 90,
 }: ScreenerControlProps) {
   const quickTags = ["半導體", "AI伺服器", "航運", "生技", "光電", "金融"];
 
@@ -149,7 +151,7 @@ export default function ScreenerControl({
       <div className="mt-3 flex items-center justify-between text-xs py-1.5 px-3 rounded bg-[#2962FF]/10 border border-[#2D3139] text-slug-400">
         <div className="flex items-center gap-1.5 text-slate-400">
           <ShieldAlert size={14} />
-          <span>篩選提示：全市場 60 檔標的中</span>
+          <span>篩選提示：全市場 {totalCount} 檔標的中</span>
         </div>
         <div className="text-slate-300">
           <span>共有 </span>

@@ -209,7 +209,7 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
     return (
       <div className="bg-[#131722] border border-[#2D3139] rounded-xl p-8 flex flex-col items-center justify-center text-center text-slate-500 h-[480px]">
         <Landmark size={48} className="text-slate-700 mb-2 animate-bounce" />
-        <p className="font-semibold text-slate-305">未選取任何個股</p>
+        <p className="font-semibold text-slate-300">未選取任何個股</p>
         <p className="text-xs max-w-xs mt-1 text-slate-500">請先在上方表格中點選任何一列，此處即可載入對應之 TradingView 專業 K 線技術圖。</p>
       </div>
     );
