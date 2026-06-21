@@ -1,0 +1,17 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Base style resets if needed for full height layout */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background-color: #0B0E14;
+  color: #D1D4DC;
+  font-family: var(--font-sans);
+}
+
