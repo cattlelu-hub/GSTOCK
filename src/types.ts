@@ -33,6 +33,7 @@ export interface Stock {
   todayOpen: number;
   todayHigh: number;
   todayLow: number;
+  isYahooSynced?: boolean;
 }
 
 export interface FilterResult {

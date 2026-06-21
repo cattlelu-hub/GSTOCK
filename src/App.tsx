@@ -7,6 +7,7 @@ import React from "react";
 import { generateStockMarket } from "./utils/stockGenerator";
 import { evaluateScreener, computeIndicators } from "./utils/indicators";
 import { Stock, FilterResult } from "./types";
+import { fetchYahooStockHistory, fetchYahooRealTimeTick } from "./utils/yahooService";
 import IndustryBoard from "./components/IndustryBoard";
 import ScreenerControl from "./components/ScreenerControl";
 import StockTable from "./components/StockTable";
@@ -83,8 +84,13 @@ export default function App() {
   const [selectedStock, setSelectedStock] = React.useState<Stock | null>(null);
   const [showOnlyMatches, setShowOnlyMatches] = React.useState<boolean>(true);
   const [countdown, setCountdown] = React.useState<number>(5);
-  const [marketMode, setMarketMode] = React.useState<"strict" | "always">("strict");
+  const [marketMode, setMarketMode] = React.useState<"strict" | "always">("always"); // Default always to keep tickers dynamic
   const [twStatus, setTwStatus] = React.useState(getTaiwanMarketStatus());
+
+  // Yahoo Finance synchronization states
+  const [isSyncingYahoo, setIsSyncingYahoo] = React.useState<boolean>(false);
+  const [yahooSyncProgress, setYahooSyncProgress] = React.useState<number>(0);
+  const [yahooSyncStatus, setYahooSyncStatus] = React.useState<string>("");
 
   // Update Taiwan Clock status every second
   React.useEffect(() => {
@@ -158,40 +164,148 @@ export default function App() {
     }
   };
 
-  // Live price fluctuation interval ticker (Runs every 1 second)
-  // Simulates minor disc-fluctuation during active trading session
+  // 1. One-click Yahoo Finance and Taiwan Stock Exchange Sync
+  const handleYahooSyncAll = async () => {
+    setIsSyncingYahoo(true);
+    setYahooSyncProgress(0);
+    setYahooSyncStatus("正在穿透連線 Yahoo 財經、證交所伺服器...");
+
+    const targetList = [
+      "2330", "2454", "2317", "2308", "3008", 
+      "2382", "3231", "2603", "2303", "2609", 
+      "3711", "2409", "3481", "2618", "2610"
+    ];
+
+    let successCount = 0;
+    let currentList = [...stocks];
+
+    for (let i = 0; i < targetList.length; i++) {
+      const sym = targetList[i];
+      setYahooSyncStatus(`正在拉取個股 ${sym} 的最新交易歷史與即時數據...`);
+      setYahooSyncProgress(Math.round((i / targetList.length) * 100));
+
+      try {
+        const history = await fetchYahooStockHistory(sym);
+        if (history && history.length > 0) {
+          const indicators = computeIndicators(history);
+          const lastH = history[history.length - 1];
+          const prevH = history[history.length - 2] || lastH;
+          const changePerc = Math.round(((lastH.close - prevH.close) / prevH.close) * 10000) / 100;
+
+          currentList = currentList.map((s) => {
+            if (s.symbol === sym) {
+              return {
+                ...s,
+                history,
+                indicators,
+                changePercentage: changePerc,
+                todayClose: lastH.close,
+                todayOpen: lastH.open,
+                todayHigh: lastH.high,
+                todayLow: lastH.low,
+                todayVolume: lastH.volume,
+                isYahooSynced: true
+              };
+            }
+            return s;
+          });
+          successCount++;
+        }
+      } catch (err) {
+        console.warn(`Yahoo sync failed for ${sym}:`, err);
+      }
+    }
+
+    setStocks(currentList);
+    setYahooSyncProgress(100);
+    setYahooSyncStatus(`同步完成！成功載入 ${successCount} 檔 證交所/Yahoo! 實時代表股 K 線，其餘個股將在您點選時在背景即時連網載入。`);
+    
+    // Automatically perform a screener evaluation to update selection
+    setTimeout(() => {
+      setIsSyncingYahoo(false);
+      // Auto-select first matching black horse if available
+      const activeMatches = currentList
+        .map((s) => evaluateScreener(s, keyword))
+        .filter((r) => r.isMatch);
+      if (activeMatches.length > 0) {
+        setSelectedStock(activeMatches[0].stock);
+      }
+    }, 2500);
+  };
+
+  // 2. On-Demand background stock sync when clicked/selected
+  const syncedSymbolsRef = React.useRef<Set<string>>(new Set());
+
   React.useEffect(() => {
-    const interval = setInterval(() => {
+    if (!selectedStock) return;
+    if (syncedSymbolsRef.current.has(selectedStock.symbol)) return;
+
+    const runOnDemandSync = async () => {
+      try {
+        const symbolToSync = selectedStock.symbol;
+        // Mark as syncing to avoid duplicate calls
+        syncedSymbolsRef.current.add(symbolToSync);
+
+        const history = await fetchYahooStockHistory(symbolToSync);
+        if (history && history.length > 0) {
+          const indicators = computeIndicators(history);
+          const lastH = history[history.length - 1];
+          const prevH = history[history.length - 2] || lastH;
+          const changePerc = Math.round(((lastH.close - prevH.close) / prevH.close) * 10000) / 100;
+
+          setStocks((prevStocks) =>
+            prevStocks.map((s) => {
+              if (s.symbol === symbolToSync) {
+                return {
+                  ...s,
+                  history,
+                  indicators,
+                  changePercentage: changePerc,
+                  todayClose: lastH.close,
+                  todayOpen: lastH.open,
+                  todayHigh: lastH.high,
+                  todayLow: lastH.low,
+                  todayVolume: lastH.volume,
+                  isYahooSynced: true
+                };
+              }
+              return s;
+            })
+          );
+        }
+      } catch (e) {
+        console.warn(`On-demand select sync failed for ${selectedStock.symbol}:`, e);
+      }
+    };
+
+    runOnDemandSync();
+  }, [selectedStock?.symbol]);
+
+  // 3. startLiveUpdateEngine() - 擬真與真實雙引擎盤中 Tick 跳動定時器 (每 2 秒執行一次)
+  React.useEffect(() => {
+    const liveTimer = setInterval(() => {
       setCountdown((prev) => {
-        const isTrading = twStatus.isTradingHours;
-        const shouldTick = marketMode === "always" || isTrading;
-        
-        if (!shouldTick) {
-          return 5; // Hold at 5 (paused state)
-        }
-        
-        if (prev <= 1) {
-          return 5; // Reset timer count
-        }
+        if (prev <= 1) return 5;
         return prev - 1;
       });
-    }, 1000);
 
-    return () => clearInterval(interval);
-  }, [marketMode, twStatus.isTradingHours]);
-
-  // Update prices periodically when the countdown resets
-  React.useEffect(() => {
-    if (countdown === 5) {
       setStocks((currentStocks) => {
         if (currentStocks.length === 0) return currentStocks;
+
         return currentStocks.map((stock) => {
-          // 5-second minor price fluctuation (-0.4% to +0.5%)
-          const delta = (Math.random() - 0.45) * 0.007;
+          // If this stock is the active selected stock, perform higher-amplitude shadow ticks
+          const isSelected = selectedStock && stock.symbol === selectedStock.symbol;
+          const isTrading = twStatus.isTradingHours;
+          const shouldTick = marketMode === "always" || isTrading;
+
+          if (!shouldTick) return stock;
+
+          const deltaFactor = isSelected ? 0.0016 : 0.0005;
+          const delta = (Math.random() - 0.49) * deltaFactor;
+          
           const originalClose = stock.todayClose;
           const newClose = Math.round(originalClose * (1 + delta) * 10) / 10;
           
-          // Updates history's latest index (Day 99)
           const updatedHistory = [...stock.history];
           const todayIdx = updatedHistory.length - 1;
           if (todayIdx >= 0) {
@@ -219,8 +333,59 @@ export default function App() {
           };
         });
       });
-    }
-  }, [countdown]);
+    }, 2000);
+
+    return () => clearInterval(liveTimer);
+  }, [selectedStock, marketMode, twStatus.isTradingHours]);
+
+  // 4. Periodic background real-time quote sync (every 14s) from Yahoo APIs directly
+  React.useEffect(() => {
+    if (!selectedStock) return;
+
+    const tickerInterval = setInterval(async () => {
+      try {
+        const liveTick = await fetchYahooRealTimeTick(selectedStock.symbol);
+        if (liveTick) {
+          setStocks((prevStocks) =>
+            prevStocks.map((s) => {
+              if (s.symbol === selectedStock.symbol) {
+                const updatedHistory = [...s.history];
+                const todayIdx = updatedHistory.length - 1;
+                if (todayIdx >= 0) {
+                  const updatedToday = { ...updatedHistory[todayIdx] };
+                  updatedToday.close = liveTick.price;
+                  updatedToday.high = Math.max(updatedToday.high, liveTick.high);
+                  updatedToday.low = Math.min(updatedToday.low, liveTick.low);
+                  updatedHistory[todayIdx] = updatedToday;
+                }
+                const lastIndices = updatedHistory.length - 1;
+                const yesterdayClose = updatedHistory[lastIndices - 1]?.close || s.todayClose;
+                const changePercentage = Math.round(((liveTick.price - yesterdayClose) / yesterdayClose) * 10000) / 100;
+                const indicators = computeIndicators(updatedHistory);
+
+                return {
+                  ...s,
+                  todayClose: liveTick.price,
+                  todayHigh: Math.max(s.todayHigh, liveTick.high),
+                  todayLow: Math.min(s.todayLow, liveTick.low),
+                  todayVolume: liveTick.volume || s.todayVolume,
+                  changePercentage,
+                  history: updatedHistory,
+                  indicators,
+                  isYahooSynced: true
+                };
+              }
+              return s;
+            })
+          );
+        }
+      } catch (e) {
+        console.warn("Real-time background tick sync failed:", e);
+      }
+    }, 14000);
+
+    return () => clearInterval(tickerInterval);
+  }, [selectedStock?.symbol]);
 
   // Make sure selected stock stays fully up-to-date with computed ticking prices
   const activeSelectedStock = React.useMemo(() => {
@@ -345,6 +510,10 @@ export default function App() {
           onRunScreener={handleRunScreener}
           matchCount={matchCount}
           totalCount={stocks.length}
+          onYahooSyncAll={handleYahooSyncAll}
+          isSyncingYahoo={isSyncingYahoo}
+          yahooSyncProgress={yahooSyncProgress}
+          yahooSyncStatus={yahooSyncStatus}
         />
 
         {/* BOTTOM: Split-pane Workspace (Left: Sorter spreadsheet, Right: 證交所即時 K 線技術圖) */}

@@ -7,6 +7,10 @@ interface ScreenerControlProps {
   onRunScreener: () => void;
   matchCount: number;
   totalCount?: number;
+  onYahooSyncAll: () => void;
+  isSyncingYahoo: boolean;
+  yahooSyncProgress: number;
+  yahooSyncStatus: string;
 }
 
 export default function ScreenerControl({
@@ -15,6 +19,10 @@ export default function ScreenerControl({
   onRunScreener,
   matchCount,
   totalCount = 90,
+  onYahooSyncAll,
+  isSyncingYahoo,
+  yahooSyncProgress,
+  yahooSyncStatus,
 }: ScreenerControlProps) {
   const quickTags = ["半導體", "AI伺服器", "航運", "生技", "光電", "金融"];
 
@@ -76,17 +84,54 @@ export default function ScreenerControl({
           </div>
         </div>
 
-        {/* Action Button */}
-        <div className="lg:w-auto">
+        {/* Action Button Group */}
+        <div className="lg:w-auto flex flex-col md:flex-row gap-2">
+          <button
+            onClick={onYahooSyncAll}
+            disabled={isSyncingYahoo}
+            id="yahoo-sync-btn"
+            className={`w-full lg:w-auto font-semibold text-xs px-5 py-3.5 rounded-lg border transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap inline-flex ${
+              isSyncingYahoo
+                ? "bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed"
+                : "bg-emerald-950/40 text-[#0bbd9f] border-emerald-500/30 hover:border-[#0bbd9f]/80 hover:bg-emerald-900/30"
+            }`}
+          >
+            <span className={isSyncingYahoo ? "animate-spin inline-block w-3.5 h-3.5 border-2 border-slate-500 border-t-transparent rounded-full" : ""}>
+              {!isSyncingYahoo && "🌐"}
+            </span>
+            {isSyncingYahoo ? "Yahoo 數據同步中..." : "連線 Yahoo Finance 歷史 K 線"}
+          </button>
+
           <button
             onClick={onRunScreener}
             id="run-screener-btn"
             className="w-full lg:w-auto bg-[#2962FF] hover:bg-[#1e4bd8] text-white font-bold text-sm px-6 py-3.5 rounded-lg shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
           >
-            🔥 一鍵篩選滿足條件黑馬股
+            🔥 一鍵選股 (開始智慧技術篩選)
           </button>
         </div>
       </div>
+
+      {/* Yahoo Finance Sync Progress bar */}
+      {isSyncingYahoo && (
+        <div className="mt-4 bg-[#1E222D] border border-cyan-500/20 rounded-lg p-3 flex flex-col gap-2 animate-pulse">
+          <div className="flex items-center justify-between text-xs font-mono">
+            <span className="text-[#0bbd9f] flex items-center gap-1.5 font-bold">
+              ⚡ 正在穿透 CORS 代理抓取 Yahoo 台灣交易歷史
+            </span>
+            <span className="text-slate-400">{yahooSyncProgress}%</span>
+          </div>
+          <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all duration-300"
+              style={{ width: `${yahooSyncProgress}%` }}
+            />
+          </div>
+          <span className="text-[10px] text-slate-500 font-mono italic">
+            → 狀態列: {yahooSyncStatus}
+          </span>
+        </div>
+      )}
 
       {/* Metric details summary */}
       <div className="mt-5 border-t border-[#2D3139] pt-4">
