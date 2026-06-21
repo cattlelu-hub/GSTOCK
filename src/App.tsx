@@ -5,24 +5,44 @@
 
 import React from "react";
 import { generateStockMarket } from "./utils/stockGenerator";
-import { evaluateScreener } from "./utils/indicators";
+import { evaluateScreener, computeIndicators } from "./utils/indicators";
 import { Stock, FilterResult } from "./types";
 import IndustryBoard from "./components/IndustryBoard";
 import ScreenerControl from "./components/ScreenerControl";
 import StockTable from "./components/StockTable";
 import StockChart from "./components/StockChart";
+import GeminiReport from "./components/GeminiReport";
 import { TrendingUp, RefreshCw, BarChart3, Radio, Info } from "lucide-react";
 
 // Helper to compute Taiwan time status (UTC+8)
 const getTaiwanMarketStatus = () => {
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: 'Asia/Taipei',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false
+  };
+
   try {
-    const formattedStr = new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei" });
-    const twDate = new Date(formattedStr);
+    const formatter = new Intl.DateTimeFormat('zh-TW', options);
+    const parts = formatter.formatToParts(new Date());
     
-    const day = twDate.getDay(); // 0: Sun, 1: Mon, ..., 6: Sat
-    const hours = twDate.getHours();
-    const minutes = twDate.getMinutes();
+    const year = parts.find(p => p.type === 'year')?.value || '';
+    const month = parts.find(p => p.type === 'month')?.value || '';
+    const dayVal = parts.find(p => p.type === 'day')?.value || '';
+    const hourVal = parts.find(p => p.type === 'hour')?.value || '00';
+    const minVal = parts.find(p => p.type === 'minute')?.value || '00';
+    const secVal = parts.find(p => p.type === 'second')?.value || '00';
     
+    const d = new Date();
+    // In local time to get correct weekday aligned with Asia/Taipei
+    // To match actual day of week in Taipei, let's calculate based on the parts
+    // but a simpler way is to construct a date object with the Taipei date
+    const twDate = new Date(`${year}-${month}-${dayVal}T${hourVal}:${minVal}:${secVal}`);
+    const day = twDate.getDay();
+    const hours = parseInt(hourVal, 10);
+    const minutes = parseInt(minVal, 10);
+
     const isWeekday = day >= 1 && day <= 5;
     const timeInMinutes = hours * 60 + minutes;
     
@@ -31,16 +51,13 @@ const getTaiwanMarketStatus = () => {
     const endMins = 13 * 60 + 30;
     const isTradingHours = isWeekday && (timeInMinutes >= startMins && timeInMinutes <= endMins);
     
-    const twTimeStr = twDate.toLocaleTimeString("zh-TW", { hour12: false });
-    const twDateStr = twDate.toLocaleDateString("zh-TW");
-    const weekdays = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
-    const weekdayString = weekdays[day];
+    const weekdayString = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"][day];
 
     return {
       isTradingHours,
-      timeString: twTimeStr,
-      dateString: twDateStr,
-      weekdayString,
+      timeString: `${hourVal}:${minVal}:${secVal}`,
+      dateString: `${year}/${month}/${dayVal}`,
+      weekdayString: `(${weekdayString})`,
       isWeekday,
     };
   } catch (err) {
@@ -54,7 +71,7 @@ const getTaiwanMarketStatus = () => {
       isTradingHours,
       timeString: now.toLocaleTimeString("zh-TW", { hour12: false }),
       dateString: now.toLocaleDateString("zh-TW"),
-      weekdayString: ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"][day],
+      weekdayString: `(${["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"][day]})`,
       isWeekday,
     };
   }
@@ -94,10 +111,34 @@ export default function App() {
     }
   }, []);
 
-  // Compute live filter results whenever stocks list or keyword changes
+  // Auto-select and refresh stock details if keyword matches a stock symbol or name
+  React.useEffect(() => {
+    if (!keyword) return;
+    const trimmed = keyword.trim().toLowerCase();
+    
+    const found = stocks.find(
+      (s) => s.symbol.toLowerCase() === trimmed || s.name.toLowerCase() === trimmed
+    );
+    if (found) {
+      setSelectedStock(found);
+    } else {
+      // Also match prefix support if user inputs 4 digits to enable instant select on code
+      if (trimmed.length >= 4) {
+        const prefixFound = stocks.find(
+          (s) => s.symbol.toLowerCase().startsWith(trimmed) || s.name.toLowerCase().startsWith(trimmed)
+        );
+        if (prefixFound) {
+          setSelectedStock(prefixFound);
+        }
+      }
+    }
+  }, [keyword, stocks]);
+
+  // Compute live filter results whenever stocks list, keyword, or time minutes changes
   const filterResults = React.useMemo(() => {
-    return stocks.map((s) => evaluateScreener(s, keyword));
-  }, [stocks, keyword]);
+    const timeMins = twStatus.timeString ? twStatus.timeString.slice(0, 5) : null;
+    return stocks.map((s) => evaluateScreener(s, keyword, timeMins));
+  }, [stocks, keyword, twStatus.timeString ? twStatus.timeString.slice(0, 5) : ""]);
 
   // Handle a click-to-screen from the industry board
   const handleSelectIndustry = (indName: string) => {
@@ -165,6 +206,7 @@ export default function App() {
           const lastIndices = updatedHistory.length - 1;
           const yesterdayClose = updatedHistory[lastIndices - 1]?.close || originalClose;
           const changePercentage = Math.round(((newClose - yesterdayClose) / yesterdayClose) * 10000) / 100;
+          const indicators = computeIndicators(updatedHistory);
 
           return {
             ...stock,
@@ -173,12 +215,7 @@ export default function App() {
             todayLow: Math.min(stock.todayLow, newClose),
             changePercentage,
             history: updatedHistory,
-            // re-execute indicators helper
-            indicators: {
-              ...stock.indicators,
-              // quick-patch today close metrics
-              bias20: stock.indicators.ma20 > 0 ? (newClose - stock.indicators.ma20) / stock.indicators.ma20 : 0
-            }
+            indicators
           };
         });
       });
@@ -238,7 +275,7 @@ export default function App() {
               <div className="flex flex-col">
                 <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px]">
                   <span className="text-slate-500 font-bold">台北時間:</span>
-                  <span className="text-slate-300 font-bold">{twStatus.dateString} ({twStatus.weekdayString}) {twStatus.timeString}</span>
+                  <span className="text-slate-300 font-bold">{twStatus.dateString} {twStatus.weekdayString} {twStatus.timeString}</span>
                 </div>
                 <div className="text-[9px] text-slate-500 flex items-center gap-1">
                   <span>台股盤中時段: 一至五 09:00-13:30</span>
@@ -325,6 +362,12 @@ export default function App() {
             />
           </section>
         </div>
+
+        {/* FULL WIDTH: Gemini AI Intelligent Screener Analysis Report */}
+        <GeminiReport
+          selectedStock={activeSelectedStock}
+          marketTime={`${twStatus.dateString} ${twStatus.timeString}`}
+        />
       </main>
 
       {/* Footer credits disclaimer (No AI clutter or unrequested credit rails, keeps the page content extremely professional) */}

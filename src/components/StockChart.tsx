@@ -218,6 +218,11 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
   const isUp = selectedStock.changePercentage >= 0;
   const biasVal = Math.round(selectedStock.indicators.bias20 * 10000) / 100;
 
+  // Multi-factor indicator to determine Bullish or Bearish trend orientation (多方 vs 空方)
+  const isBullishTrend = selectedStock.todayClose >= selectedStock.indicators.ma20 || 
+                         (selectedStock.indicators.ma5 >= selectedStock.indicators.ma20 && 
+                          selectedStock.indicators.macdDiff >= selectedStock.indicators.macdDea);
+
   return (
     <div className="bg-[#131722] border border-[#2D3139] rounded-xl overflow-hidden shadow-lg flex flex-col h-full text-[#D1D4DC]" id={`stock-chart-panel-${selectedStock.symbol}`}>
       {/* Chart Top Summary Bar */}
@@ -228,11 +233,24 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
             <span className="text-sm font-bold text-white font-mono">{selectedStock.symbol}</span>
           </div>
           <div>
-            <h2 className="text-md font-bold text-slate-100 flex items-center gap-2">
+            <h2 className="text-md font-bold text-slate-100 flex flex-wrap items-center gap-2">
               {selectedStock.name}
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#131722] text-slate-400 border border-[#2D3139] font-normal">
                 {selectedStock.industry}
               </span>
+              
+              {/* Trend Tag: 多方趨勢 vs 空方趨勢 */}
+              {isBullishTrend ? (
+                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-[#F23645]/10 text-[#F23645] border border-[#F23645]/30 font-bold flex items-center gap-1 animate-pulse">
+                  <TrendingUp size={11} />
+                  多方趨勢股
+                </span>
+              ) : (
+                <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-[#089981]/10 text-[#089981] border border-[#089981]/30 font-bold flex items-center gap-1">
+                  <TrendingDown size={11} />
+                  空方趨勢股
+                </span>
+              )}
             </h2>
             <div className="flex items-center gap-3 mt-0.5 text-[11px] font-mono text-slate-400">
               <span>開: <span className="text-white">{selectedStock.todayOpen.toFixed(1)}</span></span>

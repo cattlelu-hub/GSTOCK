@@ -116,15 +116,161 @@ export function computeIndicators(history: KLine[]): TechnicalIndicators {
 }
 
 /**
+ * Helper calculation for MA in strategy (reversed history)
+ */
+export function calculateStrategyMA(klines: any[], startIndex: number, period: number): number {
+  let sum = 0;
+  for (let i = startIndex; i < startIndex + period; i++) {
+    sum += klines[i]?.close || 0;
+  }
+  return sum / period;
+}
+
+/**
+ * Helper calculation for Volume MA in strategy (reversed history)
+ */
+export function calculateStrategyVolumeMA(klines: any[], startIndex: number, period: number): number {
+  let sum = 0;
+  for (let i = startIndex; i < startIndex + period; i++) {
+    sum += klines[i]?.volume || 0;
+  }
+  return sum / period;
+}
+
+/**
+ * Estimator for intraday full-day volume
+ */
+export function estimateFullDayVolume(currentVol: number, timeStr: string): number {
+  const [hrs, mins] = timeStr.split(':').map(Number);
+  const totalMarketMinutes = 270; // 09:00 ~ 13:30 = 270 mins
+  
+  let currentMinutes = (hrs - 9) * 60 + mins;
+  if (currentMinutes < 0) currentMinutes = 0;
+  if (currentMinutes > totalMarketMinutes) currentMinutes = totalMarketMinutes;
+  
+  if (currentMinutes === 0) return currentVol;
+  
+  const linearEstimate = currentVol * (totalMarketMinutes / currentMinutes);
+  return linearEstimate * 0.7 + currentVol * 0.3; // hybrid smoothing
+}
+
+/**
+ * Strong moving average and volume bullish alignment - inflection point screener algorithm
+ */
+export function checkBlackHorseStrategy(
+  klines: any[],
+  currentTimeStr: string | null = null
+): {
+  isBull: boolean;
+  reason: string;
+  bias: string;
+  estimatedVol: number;
+  details: {
+    maLong: boolean;
+    shakeout: boolean;
+    contraction: boolean;
+    breakout: boolean;
+    biasOk: boolean;
+  };
+} {
+  if (!klines || klines.length < 60) {
+    return {
+      isBull: false,
+      reason: "歷史資料不足 60 筆",
+      bias: "0.00%",
+      estimatedVol: 0,
+      details: { maLong: false, shakeout: false, contraction: false, breakout: false, biasOk: false }
+    };
+  }
+
+  const today = klines[0];
+  const yesterday = klines[1];
+
+  const ma5_today = calculateStrategyMA(klines, 0, 5);
+  const ma10_today = calculateStrategyMA(klines, 0, 10);
+  const ma20_today = calculateStrategyMA(klines, 0, 20);
+  const ma20_yest = calculateStrategyMA(klines, 1, 20);
+  const ma60_today = calculateStrategyMA(klines, 0, 60);
+  const v_ma5_past = calculateStrategyVolumeMA(klines, 1, 5); // 5-day average volume (excluding today)
+
+  let currentVolume = today.volume;
+  let estimatedVolume = today.volume;
+
+  if (currentTimeStr) {
+    estimatedVolume = estimateFullDayVolume(today.volume, currentTimeStr);
+    currentVolume = estimatedVolume;
+  }
+
+  // 1. Trend Bullish
+  const isTrendBullish = (ma60_today > calculateStrategyMA(klines, 1, 60)) && (ma20_today >= ma20_yest);
+
+  // 4. Today Breakout
+  const isTodayBreakout = (today.close >= ma20_today) && (yesterday.close <= ma20_yest * 1.005);
+
+  // 2. Shakeout track
+  let hasWashMarket = false;
+  for (let i = 2; i <= 10; i++) {
+    let ma20_historical = calculateStrategyMA(klines, i, 20);
+    if (klines[i].close < ma20_historical) {
+      hasWashMarket = true;
+      break;
+    }
+  }
+
+  // 3. Volume Contraction
+  let isVolumeContracted = true;
+  for (let i = 1; i <= 3; i++) {
+    let v_ma5_historical = calculateStrategyVolumeMA(klines, i, 5);
+    if (klines[i].volume > v_ma5_historical * 1.1) {
+      isVolumeContracted = false;
+      break;
+    }
+  }
+
+  // 4 (cont). Today Volumepump
+  const isVolumePumped = currentVolume >= v_ma5_past * 1.5;
+
+  // 6. Bias Ratio
+  const biasRatio = ((today.close - ma20_today) / ma20_today) * 100;
+  const biasOk = biasRatio >= 0 && biasRatio <= 3.0;
+
+  const isBull = isTrendBullish && isTodayBreakout && hasWashMarket && isVolumeContracted && isVolumePumped && biasOk;
+
+  let reason = "⭐ 滿足黑馬股條件";
+  if (!isTrendBullish) reason = "大趨勢未符合(60MA未上揚或20MA下彎)";
+  else if (!isTodayBreakout) reason = "今日未現K線突破月線拐點";
+  else if (!hasWashMarket) reason = "近期歷史無洗盤甩轎軌跡";
+  else if (!isVolumeContracted) reason = "突破前未見明顯縮量整理";
+  else if (!isVolumePumped) reason = `量能未放大(需>${Math.round(v_ma5_past * 1.5)}張，目前/預估:${Math.round(currentVolume)}張)`;
+  else if (!biasOk) reason = `乖離率過高或過低 (${biasRatio.toFixed(2)}%)`;
+
+  return {
+    isBull,
+    reason,
+    bias: biasRatio.toFixed(2) + "%",
+    estimatedVol: Math.round(estimatedVolume),
+    details: {
+      maLong: isTrendBullish,
+      shakeout: hasWashMarket,
+      contraction: isVolumeContracted,
+      breakout: isTodayBreakout && isVolumePumped,
+      biasOk
+    }
+  };
+}
+
+/**
  * Detailed technical analyzer validating a stock against conditions
  */
-export function evaluateScreener(stock: Stock, industryKeyword: string = ""): FilterResult {
+export function evaluateScreener(
+  stock: Stock,
+  industryKeyword: string = "",
+  currentTimeStr: string | null = null
+): FilterResult {
   const history = stock.history;
   const len = history.length;
-  const todayIndex = len - 1;
 
   if (len < 61) {
-    // Need at least 60-100 bars for 60MA
     return {
       stock,
       isMatch: false,
@@ -132,71 +278,18 @@ export function evaluateScreener(stock: Stock, industryKeyword: string = ""): Fi
     };
   }
 
-  // Pre-calculate full arrays of SMAs for checking history
+  // Prepare reversed array for strategy API
+  const klines = [...history].reverse();
+  const evaluation = checkBlackHorseStrategy(klines, currentTimeStr);
+
+  // Still preserve MACD improvement check visually (since it's a pleasant UI indicator, we can let it green or use our previous logic)
   const closes = history.map(h => h.close);
-  const volumes = history.map(h => h.volume);
-
-  const sma5 = calculateSMA(closes, 5);
-  const sma10 = calculateSMA(closes, 10);
-  const sma20 = calculateSMA(closes, 20);
-  const sma60 = calculateSMA(closes, 60);
-  const volSMA5 = calculateSMA(volumes, 5);
-
-  const ind = stock.indicators;
-
-  // 1. MA Long Alignment (均線多頭格局)
-  // 5MA > 10MA > 20MA > 60MA on today.
-  // 20MA today >= 20MA yesterday.
-  const maLong = (ind.ma5 > ind.ma10) && 
-                 (ind.ma10 > ind.ma20) && 
-                 (ind.ma20 > ind.ma60) && 
-                 (ind.ma20 >= ind.ma20Prev);
-
-  // 2. Shakeout track (歷史洗盤軌跡)
-  // In past 5 to 10 trading days (today-10 to today-5), had close < 20MA
-  let shakeout = false;
-  const startShake = Math.max(0, todayIndex - 10);
-  const endShake = Math.max(0, todayIndex - 5);
-  for (let i = startShake; i <= endShake; i++) {
-    if (closes[i] < sma20[i]) {
-      shakeout = true;
-      break;
-    }
-  }
-
-  // 3. Volume Contraction (量縮整理)
-  // For past 2 to 3 days (today-1, today-2, today-3), volume was less than 5-day average volume
-  let contraction = true;
-  const startCont = Math.max(0, todayIndex - 3);
-  const endCont = Math.max(0, todayIndex - 1);
-  for (let i = startCont; i <= endCont; i++) {
-    if (volumes[i] >= volSMA5[i]) {
-      contraction = false;
-      break;
-    }
-  }
-
-  // 4. Volume Breakout (今日放量突破)
-  // Today's close successfully stands over 20MA
-  // Today volume exceeds 1.5x average volume of previous 3 days (today-3, today-2, today-1)
-  const standOverMA20 = closes[todayIndex] > sma20[todayIndex];
-  const avgVolPast3Days = (volumes[todayIndex - 1] + volumes[todayIndex - 2] + volumes[todayIndex - 3]) / 3;
-  const breakoutVolume = volumes[todayIndex] >= 1.5 * avgVolPast3Days;
-  const breakout = standOverMA20 && breakoutVolume;
-
-  // 5. MACD Improvement (MACD轉佳)
-  // Today OSC satisfies "negative is shrinking" or "turned positive"
-  // Negative shrinking: macdOsc < 0 && macdOsc > macdOscPrev
-  // Tumed positive: macdOsc >= 0 && macdOscPrev < 0
-  const macdOsc = ind.macdOsc;
-  const macdOscPrev = ind.macdOscPrev;
-  const negativeShrinking = (macdOsc < 0 && macdOsc > macdOscPrev);
-  const turnedPositive = (macdOsc >= 0 && macdOscPrev < 0);
-  const macdImprove = negativeShrinking || turnedPositive;
-
-  // 6. Bias controller (乖離率控制)
-  // 20MA bias: 0% < bias <= 3%
-  const biasOk = (ind.bias20 > 0 && ind.bias20 <= 0.03);
+  const { osc } = calculateMACD(closes);
+  const lastIndex = len - 1;
+  const prevIndex = lastIndex - 1;
+  const macdOsc = osc[lastIndex] || 0;
+  const macdOscPrev = osc[prevIndex] || 0;
+  const macdImprove = (macdOsc < 0 && macdOsc > macdOscPrev) || (macdOsc >= 0 && macdOscPrev < 0);
 
   // 7. Industry Matching
   let industryMatch = true;
@@ -206,19 +299,20 @@ export function evaluateScreener(stock: Stock, industryKeyword: string = ""): Fi
                     stock.name.includes(industryKeyword.trim());
   }
 
-  const isMatch = maLong && shakeout && contraction && breakout && macdImprove && biasOk && industryMatch;
+  const isMatch = evaluation.isBull && industryMatch;
 
   return {
     stock,
     isMatch,
     reasons: {
-      maLong,
-      shakeout,
-      contraction,
-      breakout,
-      macdImprove,
-      biasOk,
+      maLong: evaluation.details.maLong,
+      shakeout: evaluation.details.shakeout,
+      contraction: evaluation.details.contraction,
+      breakout: evaluation.details.breakout,
+      macdImprove, // keep the MACD visualization
+      biasOk: evaluation.details.biasOk,
       industryMatch
     }
   };
 }
+
