@@ -8,7 +8,6 @@ import { generateStockMarket } from "./utils/stockGenerator";
 import { evaluateScreener, computeIndicators } from "./utils/indicators";
 import { Stock, FilterResult } from "./types";
 import { fetchYahooStockHistory, fetchYahooRealTimeTick, tickerNamesCache } from "./utils/yahooService";
-import IndustryBoard from "./components/IndustryBoard";
 import ScreenerControl from "./components/ScreenerControl";
 import StockTable from "./components/StockTable";
 import StockChart from "./components/StockChart";
@@ -240,12 +239,6 @@ export default function App() {
     const timeMins = twStatus.timeString ? twStatus.timeString.slice(0, 5) : null;
     return stocks.map((s) => evaluateScreener(s, keyword, timeMins, avoidOverheated));
   }, [stocks, keyword, twStatus.timeString ? twStatus.timeString.slice(0, 5) : "", avoidOverheated]);
-
-  // Handle a click-to-screen from the industry board
-  const handleSelectIndustry = (indName: string) => {
-    setKeyword(indName);
-    setShowOnlyMatches(true); // Automatically toggle to show matches for this industry
-  };
 
   // Re-run filter button
   const handleRunScreener = () => {
@@ -570,14 +563,6 @@ export default function App() {
 
       {/* Main Responsive Grid Layout Frame */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 flex flex-col gap-4">
-        {/* TOP: Real-time Industry Hotspots Board */}
-        <IndustryBoard
-          stocks={stocks}
-          onSelectIndustry={handleSelectIndustry}
-          countdown={countdown}
-          isRefreshPaused={!twStatus.isTradingHours}
-        />
-
         {/* MIDDLE: Advanced Screener Command Console */}
         <ScreenerControl
           keyword={keyword}

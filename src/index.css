@@ -6,6 +6,40 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
+@keyframes blink-red-glow {
+  0% { 
+    box-shadow: 0 0 4px rgba(242, 54, 69, 0.2); 
+    border-color: rgba(242, 54, 69, 0.3);
+    background-color: rgba(242, 54, 69, 0.1);
+  }
+  100% { 
+    box-shadow: 0 0 16px rgba(242, 54, 69, 0.9); 
+    border-color: rgba(242, 54, 69, 0.9);
+    background-color: rgba(242, 54, 69, 0.35);
+  }
+}
+
+@keyframes blink-amber-glow {
+  0% { 
+    box-shadow: 0 0 4px rgba(245, 158, 11, 0.2); 
+    border-color: rgba(245, 158, 11, 0.3);
+    background-color: rgba(245, 158, 11, 0.1);
+  }
+  100% { 
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.9); 
+    border-color: rgba(245, 158, 11, 0.9);
+    background-color: rgba(245, 158, 11, 0.35);
+  }
+}
+
+.animate-blink-red {
+  animation: blink-red-glow 0.8s infinite alternate;
+}
+
+.animate-blink-amber {
+  animation: blink-amber-glow 0.8s infinite alternate;
+}
+
 /* Base style resets if needed for full height layout */
 html, body, #root {
   height: 100%;

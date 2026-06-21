@@ -49,10 +49,10 @@ export default function StockTable({
     if (showOnlyMatches) {
       result = result.filter((item) => item.isMatch);
     } else {
-      // Sort by changePercentage descending to capture all stocks and limit to top 90 gainers
+      // Sort by changePercentage descending to capture all stocks and limit to top 300 gainers
       result = [...result]
         .sort((a, b) => b.stock.changePercentage - a.stock.changePercentage)
-        .slice(0, 90);
+        .slice(0, 300);
     }
 
     // Perform sorting
@@ -154,9 +154,9 @@ export default function StockTable({
                 ? "bg-[#2962FF] text-white shadow"
                 : "text-slate-400 hover:text-slate-200"
             }`}
-            title="免除 API 金鑰限制，套用台股並依當前市場漲幅排序，前 90 名強勢標的一覽"
+            title="免除 API 金鑰限制，套用台股並依當前市場漲幅排序，前 300 名強勢標的一覽"
           >
-            🌐 台股漲幅前 90 名 (免金鑰)
+            🌐 台股漲幅前 300 名 (免金鑰)
           </button>
         </div>
       </div>
@@ -234,6 +234,30 @@ export default function StockTable({
                 const bgBadgeClass = isUp ? "bg-[#F23645]/10 text-[#F23645]" : "bg-[#089981]/10 text-[#089981]";
                 const biasVal = Math.round(stock.indicators.bias20 * 10000) / 100;
                 const isBiasOverlimit = biasVal > 3.0 || biasVal <= 0;
+
+                // Calculate breakout conditions (10MA or 20MA)
+                const len = stock.history.length;
+                const yesterdayClose = len >= 2 ? stock.history[len - 2].close : null;
+                const todayClose = stock.todayClose;
+                
+                const todayMA10 = stock.indicators.ma10;
+                const todayMA20 = stock.indicators.ma20;
+                
+                let yesterdayMA10 = 0;
+                if (len >= 11) {
+                  const sum = stock.history.slice(len - 11, len - 1).reduce((acc, bar) => acc + bar.close, 0);
+                  yesterdayMA10 = sum / 10;
+                } else if (len >= 10) {
+                  yesterdayMA10 = todayMA10;
+                }
+                
+                const yesterdayMA20 = stock.indicators.ma20Prev || todayMA20;
+                
+                const isBreakoutMA10 = yesterdayClose !== null && yesterdayMA10 > 0 &&
+                  yesterdayClose < yesterdayMA10 && todayClose >= todayMA10;
+                  
+                const isBreakoutMA20 = yesterdayClose !== null && yesterdayMA20 > 0 &&
+                  yesterdayClose < yesterdayMA20 && todayClose >= todayMA20;
  
                 return (
                   <tr
@@ -252,10 +276,21 @@ export default function StockTable({
                     </td>
                     
                     {/* Name */}
-                    <td className="p-3 text-slate-100 font-semibold group-hover:text-white flex items-center gap-1">
-                      {stock.name}
+                    <td className="p-3 text-slate-100 font-semibold group-hover:text-white flex flex-wrap items-center gap-1.5">
+                      <span>{stock.name}</span>
                       {isSelected && (
                         <div className="w-1.5 h-1.5 rounded-full bg-[#2962FF] animate-ping" />
+                      )}
+                      
+                      {isBreakoutMA20 && (
+                        <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-extrabold tracking-wider text-rose-100 border animate-blink-red" title="今日收盤站上月線（20日線），前一日在月線以下">
+                          突破月線
+                        </span>
+                      )}
+                      {isBreakoutMA10 && (
+                        <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-extrabold tracking-wider text-amber-100 border animate-blink-amber" title="今日收盤站上10日線，前一日在10日線以下">
+                          突破10日
+                        </span>
                       )}
                     </td>
  

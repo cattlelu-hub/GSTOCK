@@ -470,6 +470,328 @@ export function generateStockMarket(): Stock[] {
         { symbol: "2889", name: "國票金", basePrice: 15 },
         { symbol: "2812", name: "台中銀", basePrice: 17 }
       ]
+    },
+    {
+      industry: "網通與網際網路",
+      stocks: [
+        { symbol: "2345", name: "智邦", basePrice: 512 },
+        { symbol: "5388", name: "中磊", basePrice: 110 },
+        { symbol: "2332", name: "友訊", basePrice: 18 },
+        { symbol: "3062", name: "建漢", basePrice: 22 },
+        { symbol: "3596", name: "智易", basePrice: 140 },
+        { symbol: "6285", name: "啟碁", basePrice: 130 },
+        { symbol: "3704", name: "合勤控", basePrice: 42 },
+        { symbol: "2419", name: "仲琦", basePrice: 26 },
+        { symbol: "8011", name: "台通", basePrice: 24 },
+        { symbol: "3380", name: "明泰", basePrice: 32 },
+        { symbol: "3491", name: "昇達科", basePrice: 185 },
+        { symbol: "6214", name: "精誠", basePrice: 120 },
+        { symbol: "3045", name: "台灣大", basePrice: 105 },
+        { symbol: "4904", name: "遠傳", basePrice: 85 },
+        { symbol: "2412", name: "中華電", basePrice: 122 },
+        { symbol: "5471", name: "松翰", basePrice: 46 },
+        { symbol: "8086", name: "宏捷科", basePrice: 115 },
+        { symbol: "3105", name: "穩懋", basePrice: 135 },
+        { symbol: "2455", name: "全新", basePrice: 125 },
+        { symbol: "4977", name: "眾達-KY", basePrice: 75 }
+      ]
+    },
+    {
+      industry: "重電與綠色能源",
+      stocks: [
+        { symbol: "1513", name: "中興電", basePrice: 165 },
+        { symbol: "1519", name: "華城", basePrice: 690 },
+        { symbol: "1503", name: "士電", basePrice: 210 },
+        { symbol: "1514", name: "亞力", basePrice: 115 },
+        { symbol: "1605", name: "華新", basePrice: 35 },
+        { symbol: "1608", name: "華榮", basePrice: 24 },
+        { symbol: "1609", name: "大亞", basePrice: 45 },
+        { symbol: "1611", name: "中電", basePrice: 14 },
+        { symbol: "3708", name: "上緯投控", basePrice: 108 },
+        { symbol: "6806", name: "森崴能源", basePrice: 120 },
+        { symbol: "9958", name: "世紀鋼", basePrice: 215 },
+        { symbol: "3860", name: "雙美", basePrice: 280 },
+        { symbol: "6443", name: "元晶", basePrice: 24 },
+        { symbol: "6244", name: "茂迪", basePrice: 26 },
+        { symbol: "3576", name: "聯合再生", basePrice: 12 },
+        { symbol: "6477", name: "安集", basePrice: 35 },
+        { symbol: "8404", name: "百和興業-KY", basePrice: 21 },
+        { symbol: "9904", name: "寶成", basePrice: 36 },
+        { symbol: "9910", name: "豐泰", basePrice: 165 },
+        { symbol: "9921", name: "巨大", basePrice: 180 }
+      ]
+    },
+    {
+      industry: "傳產與鋼鐵石化",
+      stocks: [
+        { symbol: "2002", name: "中鋼", basePrice: 22 },
+        { symbol: "1301", name: "台塑", basePrice: 62 },
+        { symbol: "1303", name: "南亞", basePrice: 54 },
+        { symbol: "1304", name: "台聚", basePrice: 16 },
+        { symbol: "1308", name: "亞聚", basePrice: 18 },
+        { symbol: "1312", name: "國喬", basePrice: 14 },
+        { symbol: "1314", name: "中石化", basePrice: 9 },
+        { symbol: "1101", name: "台泥", basePrice: 32 },
+        { symbol: "1102", name: "亞泥", basePrice: 41 },
+        { symbol: "1216", name: "統一", basePrice: 75 },
+        { symbol: "1201", name: "味全", basePrice: 21 },
+        { symbol: "1210", name: "大成", basePrice: 52 },
+        { symbol: "1402", name: "遠東新", basePrice: 32 },
+        { symbol: "1440", name: "南紡", basePrice: 15 },
+        { symbol: "1476", name: "儒鴻", basePrice: 512 },
+        { symbol: "1477", name: "聚陽", basePrice: 360 },
+        { symbol: "2103", name: "台橡", basePrice: 21 },
+        { symbol: "2105", name: "正新", basePrice: 48 },
+        { symbol: "2106", name: "建大", basePrice: 24 },
+        { symbol: "2014", name: "中鴻", basePrice: 18 },
+        { symbol: "2006", name: "東鋼", basePrice: 72 },
+        { symbol: "2027", name: "大成鋼", basePrice: 36 },
+        { symbol: "1504", name: "東元", basePrice: 52 },
+        { symbol: "1507", name: "永大", basePrice: 65 },
+        { symbol: "2104", name: "中橡", basePrice: 18 },
+        { symbol: "2201", name: "裕隆", basePrice: 64 },
+        { symbol: "2204", name: "中華車", basePrice: 110 },
+        { symbol: "2207", name: "和泰車", basePrice: 610 },
+        { symbol: "2912", name: "統一超", basePrice: 265 },
+        { symbol: "2903", name: "遠百", basePrice: 26 }
+      ]
+    },
+    {
+      industry: "建材營建",
+      stocks: [
+        { symbol: "2542", name: "興富發", basePrice: 48 },
+        { symbol: "2548", name: "華固", basePrice: 110 },
+        { symbol: "2501", name: "國建", basePrice: 24 },
+        { symbol: "2520", name: "冠德", basePrice: 45 },
+        { symbol: "2534", name: "宏盛", basePrice: 22 },
+        { symbol: "2539", name: "櫻花建", basePrice: 52 },
+        { symbol: "2545", name: "皇翔", basePrice: 58 },
+        { symbol: "2511", name: "太子", basePrice: 12 },
+        { symbol: "1802", name: "台玻", basePrice: 17 },
+        { symbol: "2504", name: "國產", basePrice: 34 },
+        { symbol: "2515", name: "中工", basePrice: 14 },
+        { symbol: "2524", name: "京城", basePrice: 56 },
+        { symbol: "5534", name: "長虹", basePrice: 85 },
+        { symbol: "2530", name: "華建", basePrice: 15 },
+        { symbol: "2538", name: "基泰", basePrice: 11 },
+        { symbol: "2546", name: "根基", basePrice: 72 },
+        { symbol: "2547", name: "日勝生", basePrice: 9 },
+        { symbol: "5521", name: "工信", basePrice: 11 },
+        { symbol: "5522", name: "遠雄", basePrice: 75 },
+        { symbol: "5531", name: "鄉林", basePrice: 10 }
+      ]
+    },
+    {
+      industry: "電子通路與零組件",
+      stocks: [
+        { symbol: "3037", name: "欣興", basePrice: 165 },
+        { symbol: "3189", name: "景碩", basePrice: 95 },
+        { symbol: "8046", name: "南電", basePrice: 180 },
+        { symbol: "2367", name: "燿華", basePrice: 28 },
+        { symbol: "2313", name: "華通", basePrice: 75 },
+        { symbol: "2368", name: "金像電", basePrice: 210 },
+        { symbol: "3044", name: "健鼎", basePrice: 195 },
+        { symbol: "6269", name: "台郡", basePrice: 82 },
+        { symbol: "4958", name: "臻鼎-KY", basePrice: 115 },
+        { symbol: "3023", name: "信邦", basePrice: 285 },
+        { symbol: "3702", name: "大聯大", basePrice: 84 },
+        { symbol: "3036", name: "文曄", basePrice: 125 },
+        { symbol: "2459", name: "敦吉", basePrice: 62 },
+        { symbol: "3010", name: "華立", basePrice: 110 },
+        { symbol: "3029", name: "零壹", basePrice: 65 },
+        { symbol: "2430", name: "燦坤", basePrice: 34 },
+        { symbol: "6142", name: "友勁", basePrice: 12 },
+        { symbol: "6281", name: "全國電", basePrice: 78 },
+        { symbol: "5434", name: "崇越", basePrice: 235 },
+        { symbol: "3209", name: "全科", basePrice: 38 }
+      ]
+    },
+    {
+      industry: "PCB",
+      stocks: [
+        { symbol: "3037", name: "欣興", basePrice: 165 },
+        { symbol: "3189", name: "景碩", basePrice: 95 },
+        { symbol: "8046", name: "南電", basePrice: 180 },
+        { symbol: "2313", name: "華通", basePrice: 75 },
+        { symbol: "2368", name: "金像電", basePrice: 210 },
+        { symbol: "3044", name: "健鼎", basePrice: 195 },
+        { symbol: "4958", name: "臻鼎-KY", basePrice: 115 },
+        { symbol: "2367", name: "燿華", basePrice: 28 },
+        { symbol: "6269", name: "台郡", basePrice: 82 },
+        { symbol: "2383", name: "台光電", basePrice: 380 },
+        { symbol: "6213", name: "聯茂", basePrice: 78 },
+        { symbol: "6274", name: "台燿", basePrice: 135 }
+      ]
+    },
+    {
+      industry: "記憶體",
+      stocks: [
+        { symbol: "2408", name: "南亞科", basePrice: 65 },
+        { symbol: "2344", name: "華邦電", basePrice: 25 },
+        { symbol: "2337", name: "旺宏", basePrice: 26 },
+        { symbol: "3260", name: "威剛", basePrice: 105 },
+        { symbol: "3006", name: "晶豪科", basePrice: 75 },
+        { symbol: "8299", name: "群聯", basePrice: 580 },
+        { symbol: "2451", name: "創見", basePrice: 85 },
+        { symbol: "4967", name: "十銓", basePrice: 88 },
+        { symbol: "8110", name: "華東", basePrice: 15 },
+        { symbol: "8271", name: "宇瞻", basePrice: 55 }
+      ]
+    },
+    {
+      industry: "被動元件",
+      stocks: [
+        { symbol: "2327", name: "國巨", basePrice: 580 },
+        { symbol: "2492", name: "華新科", basePrice: 110 },
+        { symbol: "2428", name: "興勤", basePrice: 150 },
+        { symbol: "3026", name: "禾伸堂", basePrice: 105 },
+        { symbol: "2375", name: "凱美", basePrice: 65 },
+        { symbol: "2478", name: "大毅", basePrice: 48 },
+        { symbol: "6120", name: "立敦", basePrice: 38 },
+        { symbol: "6173", name: "信昌電", basePrice: 52 },
+        { symbol: "3042", name: "晶技", basePrice: 110 }
+      ]
+    },
+    {
+      industry: "光通訊",
+      stocks: [
+        { symbol: "4979", name: "華星光", basePrice: 135 },
+        { symbol: "3450", name: "聯鈞", basePrice: 85 },
+        { symbol: "4977", name: "眾達-KY", basePrice: 75 },
+        { symbol: "3081", name: "聯亞", basePrice: 145 },
+        { symbol: "3163", name: "波若威", basePrice: 115 },
+        { symbol: "3234", name: "光環", basePrice: 28 },
+        { symbol: "3363", name: "上詮", basePrice: 95 },
+        { symbol: "4908", name: "前鼎", basePrice: 85 },
+        { symbol: "6442", name: "光聖", basePrice: 160 }
+      ]
+    },
+    {
+      industry: "功率元件",
+      stocks: [
+        { symbol: "3707", name: "漢磊", basePrice: 62 },
+        { symbol: "3016", name: "嘉晶", basePrice: 55 },
+        { symbol: "6435", name: "大中", basePrice: 115 },
+        { symbol: "3317", name: "尼克森", basePrice: 48 },
+        { symbol: "8261", name: "富鼎", basePrice: 82 },
+        { symbol: "2481", name: "強茂", basePrice: 60 },
+        { symbol: "3675", name: "德微", basePrice: 230 },
+        { symbol: "5425", name: "台半", basePrice: 78 },
+        { symbol: "6525", name: "捷敏-KY", basePrice: 68 }
+      ]
+    },
+    {
+      industry: "玻璃基板",
+      stocks: [
+        { symbol: "1802", name: "台玻", basePrice: 17 },
+        { symbol: "3049", name: "和鑫", basePrice: 11 },
+        { symbol: "2464", name: "盟立", basePrice: 58 },
+        { symbol: "3535", name: "晶彩科", basePrice: 28 },
+        { symbol: "2409", name: "友達", basePrice: 18 },
+        { symbol: "3481", name: "群創", basePrice: 15 },
+        { symbol: "6278", name: "台表科", basePrice: 112 }
+      ]
+    },
+    {
+      industry: "設備廠",
+      stocks: [
+        { symbol: "3131", name: "弘塑", basePrice: 920 },
+        { symbol: "3680", name: "萬潤", basePrice: 285 },
+        { symbol: "5443", name: "均豪", basePrice: 68 },
+        { symbol: "2486", name: "一詮", basePrice: 82 },
+        { symbol: "6683", name: "雍智科技", basePrice: 320 },
+        { symbol: "6515", name: "穎崴", basePrice: 780 },
+        { symbol: "3583", name: "辛耘", basePrice: 295 },
+        { symbol: "3413", name: "京鼎", basePrice: 290 },
+        { symbol: "6223", name: "旺矽", basePrice: 360 },
+        { symbol: "3563", name: "牧德", basePrice: 280 },
+        { symbol: "8064", name: "東捷", basePrice: 26 }
+      ]
+    },
+    {
+      industry: "玻纖布",
+      stocks: [
+        { symbol: "5340", name: "建榮", basePrice: 65 },
+        { symbol: "1815", name: "富喬", basePrice: 22 },
+        { symbol: "5475", name: "德宏", basePrice: 15 },
+        { symbol: "8358", name: "金居", basePrice: 68 }
+      ]
+    },
+    {
+      industry: "低軌衛星",
+      stocks: [
+        { symbol: "3491", name: "昇達科", basePrice: 185 },
+        { symbol: "6285", name: "啟碁", basePrice: 130 },
+        { symbol: "3138", name: "耀登", basePrice: 125 },
+        { symbol: "3178", name: "公準", basePrice: 88 },
+        { symbol: "2313", name: "華通", basePrice: 75 },
+        { symbol: "2314", name: "台揚", basePrice: 35 },
+        { symbol: "2419", name: "仲琦", basePrice: 26 },
+        { symbol: "2485", name: "兆赫", basePrice: 24 }
+      ]
+    },
+    {
+      industry: "銅箔基板",
+      stocks: [
+        { symbol: "2383", name: "台光電", basePrice: 380 },
+        { symbol: "6213", name: "聯茂", basePrice: 78 },
+        { symbol: "6274", name: "台燿", basePrice: 135 },
+        { symbol: "6672", name: "騰輝電子-KY", basePrice: 85 }
+      ]
+    },
+    {
+      industry: "砷化鎵",
+      stocks: [
+        { symbol: "3105", name: "穩懋", basePrice: 135 },
+        { symbol: "2455", name: "全新", basePrice: 125 },
+        { symbol: "8086", name: "宏捷科", basePrice: 115 },
+        { symbol: "4991", name: "環宇-KY", basePrice: 60 }
+      ]
+    },
+    {
+      industry: "探針卡",
+      stocks: [
+        { symbol: "6223", name: "旺矽", basePrice: 360 },
+        { symbol: "6515", name: "穎崴", basePrice: 780 },
+        { symbol: "6683", name: "雍智科技", basePrice: 320 },
+        { symbol: "3264", name: "欣銓", basePrice: 70 },
+        { symbol: "2449", name: "京元電子", basePrice: 95 }
+      ]
+    },
+    {
+      industry: "MCU",
+      stocks: [
+        { symbol: "4919", name: "新唐", basePrice: 110 },
+        { symbol: "3014", name: "聯陽", basePrice: 140 },
+        { symbol: "6202", name: "盛群", basePrice: 58 },
+        { symbol: "5471", name: "松翰", basePrice: 48 },
+        { symbol: "8016", name: "矽創", basePrice: 220 },
+        { symbol: "3122", name: "笙泉", basePrice: 35 }
+      ]
+    },
+    {
+      industry: "電源供應器",
+      stocks: [
+        { symbol: "2308", name: "台達電", basePrice: 310 },
+        { symbol: "6412", name: "群電", basePrice: 135 },
+        { symbol: "6282", name: "康舒", basePrice: 38 },
+        { symbol: "3015", name: "全漢", basePrice: 58 },
+        { symbol: "2301", name: "光寶科", basePrice: 105 }
+      ]
+    },
+    {
+      industry: "IC設計",
+      stocks: [
+        { symbol: "2454", name: "聯發科", basePrice: 1205 },
+        { symbol: "3034", name: "聯詠", basePrice: 580 },
+        { symbol: "2379", name: "瑞昱", basePrice: 520 },
+        { symbol: "3443", name: "創意", basePrice: 1350 },
+        { symbol: "3661", name: "世芯-KY", basePrice: 2200 },
+        { symbol: "5269", name: "祥碩", basePrice: 1850 },
+        { symbol: "3529", name: "力旺", basePrice: 2150 },
+        { symbol: "8054", name: "神盾", basePrice: 230 },
+        { symbol: "6415", name: "矽力*-KY", basePrice: 380 }
+      ]
     }
   ];
 
