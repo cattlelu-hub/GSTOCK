@@ -48,10 +48,9 @@ export default function StockTable({
     if (showOnlyMatches) {
       result = result.filter((item) => item.isMatch);
     } else {
-      // Sort by changePercentage descending to capture the Top 60 gainers in the whole market
+      // Sort by changePercentage descending to capture all stocks
       result = [...result]
-        .sort((a, b) => b.stock.changePercentage - a.stock.changePercentage)
-        .slice(0, 60);
+        .sort((a, b) => b.stock.changePercentage - a.stock.changePercentage);
     }
 
     // Perform sorting
@@ -154,7 +153,7 @@ export default function StockTable({
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            🌐 全市場漲幅最高60檔
+            🌐 台股所有標的
           </button>
         </div>
       </div>
@@ -217,7 +216,7 @@ export default function StockTable({
                     <X size={32} className="text-red-550/50" />
                     <p className="font-semibold text-slate-350">查無任何符合條件的個股</p>
                     <p className="text-[11.5px] max-w-sm">
-                      請在此區塊右上方切換成「🌐 全市場漲幅最高60檔」即可瀏覽所有股票，或者清除「今日主流題材」過濾關鍵字。
+                      請在此區塊右上方切換成「🌐 台股所有標的」即可瀏覽所有股票，或者清除「今日主流題材」過濾關鍵字。
                     </p>
                   </div>
                 </td>

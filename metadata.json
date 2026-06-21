@@ -1,6 +1,6 @@
 {
   "name": "台股即時選股與產業監控系統",
-  "description": "提供即時產業焦點看板、高階技術面交叉複合選股（MA、洗盤、量能、MACD、乖離率）以及 TradingView 互動式 K 線均線圖連動分析看盤系統。",
+  "description": "提供即時產業焦點看板、高階技術面交叉複合選股（MA、洗盤、量能、MACD、乖離率）以及三竹股市 K 線均線圖連動分析看盤系統。",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
