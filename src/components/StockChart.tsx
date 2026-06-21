@@ -17,6 +17,14 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
   const [activeTab, setActiveTab] = React.useState<"chart" | "potential">("chart");
   const [activeExplainDim, setActiveExplainDim] = React.useState<string | null>(null);
 
+  // References for series to allow flicker-free real-time ticking
+  const candlestickSeriesRef = React.useRef<any>(null);
+  const volumeSeriesRef = React.useRef<any>(null);
+  const line5SeriesRef = React.useRef<any>(null);
+  const line10SeriesRef = React.useRef<any>(null);
+  const line20SeriesRef = React.useRef<any>(null);
+  const line60SeriesRef = React.useRef<any>(null);
+
   // Automatically switch tab to chart when symbol changes
   React.useEffect(() => {
     setActiveTab("chart");
@@ -157,6 +165,7 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
         close: h.close,
       }));
       candlestickSeries.setData(cData);
+      candlestickSeriesRef.current = candlestickSeries;
 
       // Add Volume Series as Subchart at bottom (bottom 20%)
       const volumeSeries = chart.addHistogramSeries({
@@ -180,6 +189,7 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
         color: h.close >= h.open ? "rgba(242, 54, 69, 0.45)" : "rgba(8, 153, 129, 0.45)",
       }));
       volumeSeries.setData(vData);
+      volumeSeriesRef.current = volumeSeries;
 
       // Calculate Moving Averages for all 100 days
       const prices = selectedStock.history.map((h) => h.close);
@@ -208,6 +218,7 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
         title: "5MA",
       });
       line5Series.setData(createLineData(ma5Values, 5));
+      line5SeriesRef.current = line5Series;
 
       // Add 10MA (Yellow)
       const line10Series = chart.addLineSeries({
@@ -216,6 +227,7 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
         title: "10MA",
       });
       line10Series.setData(createLineData(ma10Values, 10));
+      line10SeriesRef.current = line10Series;
 
       // Add 20MA (Pink)
       const line20Series = chart.addLineSeries({
@@ -224,6 +236,7 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
         title: "20MA (月)",
       });
       line20Series.setData(createLineData(ma20Values, 20));
+      line20SeriesRef.current = line20Series;
 
       // Add 60MA (Teal)
       const line60Series = chart.addLineSeries({
@@ -232,6 +245,7 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
         title: "60MA (季)",
       });
       line60Series.setData(createLineData(ma60Values, 60));
+      line60SeriesRef.current = line60Series;
 
       // Fit content inside the screen visible bounds
       chart.timeScale().fitContent();
@@ -267,7 +281,57 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
       if (chartRef.current === activeChart) {
         chartRef.current = null;
       }
+      candlestickSeriesRef.current = null;
+      volumeSeriesRef.current = null;
+      line5SeriesRef.current = null;
+      line10SeriesRef.current = null;
+      line20SeriesRef.current = null;
+      line60SeriesRef.current = null;
     };
+  }, [selectedStock?.symbol]);
+
+  // Micro secondary hook to perform high-speed updates when any trade tick updates prices and volumes
+  React.useEffect(() => {
+    if (!selectedStock || !candlestickSeriesRef.current) return;
+    
+    const history = selectedStock.history;
+    if (history.length === 0) return;
+    
+    const lastH = history[history.length - 1];
+    
+    try {
+      candlestickSeriesRef.current.update({
+        time: lastH.time,
+        open: lastH.open,
+        high: lastH.high,
+        low: lastH.low,
+        close: lastH.close,
+      });
+
+      if (volumeSeriesRef.current) {
+        volumeSeriesRef.current.update({
+          time: lastH.time,
+          value: lastH.volume,
+          color: lastH.close >= lastH.open ? "rgba(242, 54, 69, 0.45)" : "rgba(8, 153, 129, 0.45)",
+        });
+      }
+
+      // Smoothly update Moving Average series terminal points
+      if (line5SeriesRef.current && selectedStock.indicators.ma5 > 0) {
+        line5SeriesRef.current.update({ time: lastH.time, value: selectedStock.indicators.ma5 });
+      }
+      if (line10SeriesRef.current && selectedStock.indicators.ma10 > 0) {
+        line10SeriesRef.current.update({ time: lastH.time, value: selectedStock.indicators.ma10 });
+      }
+      if (line20SeriesRef.current && selectedStock.indicators.ma20 > 0) {
+        line20SeriesRef.current.update({ time: lastH.time, value: selectedStock.indicators.ma20 });
+      }
+      if (line60SeriesRef.current && selectedStock.indicators.ma60 > 0) {
+        line60SeriesRef.current.update({ time: lastH.time, value: selectedStock.indicators.ma60 });
+      }
+    } catch (err) {
+      console.warn("Error updating chart tick dynamically:", err);
+    }
   }, [selectedStock]);
 
   if (!selectedStock) {
@@ -447,9 +511,15 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
               </span>
             </div>
             <div className="border-l border-[#2D3139] pl-3 text-left">
-              <span className="text-[10px] text-slate-500 block leading-tight">乖離率</span>
+              <span className="text-[10px] text-slate-500 block leading-tight">20D 乖離</span>
               <span className={`text-xs font-mono font-bold ${biasVal > 0 && biasVal <= 3.0 ? "text-yellow-500" : "text-slate-300"}`}>
                 {biasVal > 0 ? "+" : ""}{biasVal.toFixed(2)}%
+              </span>
+            </div>
+            <div className="border-l border-[#2D3139] pl-3 text-left">
+              <span className="text-[10px] text-slate-500 block leading-tight">5D | 10D 乖離</span>
+              <span className="text-xs font-mono font-bold text-[#f5a623]">
+                {selectedStock.indicators.bias5 > 0 ? "+" : ""}{selectedStock.indicators.bias5?.toFixed(1)}% / {selectedStock.indicators.bias10 > 0 ? "+" : ""}{selectedStock.indicators.bias10?.toFixed(1)}%
               </span>
             </div>
           </div>

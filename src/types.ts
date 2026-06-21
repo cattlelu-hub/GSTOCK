@@ -19,6 +19,9 @@ export interface TechnicalIndicators {
   macdOsc: number;
   macdOscPrev: number;
   bias20: number; // 20MA bias
+  bias5: number;  // 5MA bias
+  bias10: number; // 10MA bias
+  bias60: number; // 60MA bias
 }
 
 export interface Stock {
@@ -47,5 +50,6 @@ export interface FilterResult {
     macdImprove: boolean; // MACD improvement
     biasOk: boolean;      // 0% < Bias <= 3%
     industryMatch: boolean;
+    overheated?: boolean; // 乖離率過大修正 (過熱)
   };
 }

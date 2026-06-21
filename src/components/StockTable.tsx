@@ -42,6 +42,7 @@ export default function StockTable({
         stock: s,
         isMatch: filterRes?.isMatch ?? false,
         bias20: s.indicators.bias20,
+        overheated: filterRes?.reasons.overheated ?? false,
       };
     });
 
@@ -224,7 +225,7 @@ export default function StockTable({
                 </td>
               </tr>
             ) : (
-              listToRender.map(({ stock, isMatch }) => {
+              listToRender.map(({ stock, isMatch, overheated }) => {
                 const isSelected = selectedStock?.symbol === stock.symbol;
                 const isUp = stock.changePercentage >= 0;
                 
@@ -293,6 +294,10 @@ export default function StockTable({
                       {isMatch ? (
                         <span className="inline-flex items-center justify-center bg-[#2962FF]/10 text-[#2962FF] border border-[#2962FF]/30 font-bold text-[9px] px-2 py-0.5 rounded h-[18px]">
                           ⭐ 黑馬
+                        </span>
+                      ) : overheated ? (
+                        <span className="inline-flex items-center justify-center bg-amber-950/40 text-amber-500 border border-amber-500/30 font-bold text-[9px] px-2 py-0.5 rounded h-[18px]" title="乖離率偏大，屬於過熱追高高檔股">
+                          ⚠️ 過熱
                         </span>
                       ) : (
                         <span className="inline-flex items-center justify-center bg-[#1E222D] text-slate-500 text-[9px] px-2 py-0.5 rounded h-[18px]">

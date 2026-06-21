@@ -4,6 +4,8 @@ import { Search, Info, CheckCircle2, ShieldAlert } from "lucide-react";
 interface ScreenerControlProps {
   keyword: string;
   setKeyword: (kw: string) => void;
+  avoidOverheated: boolean;
+  setAvoidOverheated: (val: boolean) => void;
   onRunScreener: () => void;
   matchCount: number;
   totalCount?: number;
@@ -16,6 +18,8 @@ interface ScreenerControlProps {
 export default function ScreenerControl({
   keyword,
   setKeyword,
+  avoidOverheated,
+  setAvoidOverheated,
   onRunScreener,
   matchCount,
   totalCount = 90,
@@ -81,6 +85,24 @@ export default function ScreenerControl({
                 {tag}
               </button>
             ))}
+          </div>
+
+          {/* Advanced Indicator Filters */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-3 px-3 py-2 bg-[#1E222D] rounded-lg border border-[#2D3139]/80 text-[#D1D4DC]">
+            <label className="flex items-center gap-2 text-xs font-semibold cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={avoidOverheated}
+                onChange={(e) => setAvoidOverheated(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-600 text-[#2962FF] focus:ring-[#2962FF] bg-[#131722] transition-colors"
+                id="avoid-overheated-checkbox"
+              />
+              <span className="text-[#f5a623] font-bold whitespace-nowrap">⚠️ 乖離率過大修正 (避開過熱個股)</span>
+            </label>
+            <span className="hidden sm:inline-block w-[1px] h-3 bg-slate-700"></span>
+            <span className="text-[11px] text-slate-400">
+              啟用後系統將自動剔除 <strong className="text-slate-300">5日、10日或20日正乖離過大</strong> 的高檔追焦股（大於 5%、8% 或 10%），降低被套在高點的風險。
+            </span>
           </div>
         </div>
 

@@ -20,6 +20,23 @@ export function calculateSMA(prices: number[], period: number): number[] {
 }
 
 /**
+ * Calculates Bias (%) of an array of numbers relative to their Moving Average
+ * Bias = ((Close - MA) / MA) * 100
+ */
+export function calculateBIAS(prices: number[], period: number): number[] {
+  const sma = calculateSMA(prices, period);
+  const bias: number[] = [];
+  for (let i = 0; i < prices.length; i++) {
+    if (sma[i] === 0) {
+      bias.push(0);
+    } else {
+      bias.push(((prices[i] - sma[i]) / sma[i]) * 100);
+    }
+  }
+  return bias;
+}
+
+/**
  * Calculates Exponential Moving Average (EMA) of an array of numbers
  */
 export function calculateEMA(prices: number[], period: number): number[] {
@@ -94,11 +111,17 @@ export function computeIndicators(history: KLine[]): TechnicalIndicators {
   const prevIndex = lastIndex - 1;
 
   const currentClose = closes[lastIndex];
+  const currentMA5 = sma5[lastIndex];
+  const currentMA10 = sma10[lastIndex];
   const currentMA20 = sma20[lastIndex];
+  const currentMA60 = sma60[lastIndex];
   const prevMA20 = sma20[prevIndex] || currentMA20;
 
   // Calculate 20MA bias percentage: (Close - 20MA) / 20MA
   const bias20 = currentMA20 > 0 ? (currentClose - currentMA20) / currentMA20 : 0;
+  const bias5 = currentMA5 > 0 ? ((currentClose - currentMA5) / currentMA5) * 100 : 0;
+  const bias10 = currentMA10 > 0 ? ((currentClose - currentMA10) / currentMA10) * 100 : 0;
+  const bias60 = currentMA60 > 0 ? ((currentClose - currentMA60) / currentMA60) * 100 : 0;
 
   return {
     ma5: sma5[lastIndex] || 0,
@@ -111,7 +134,10 @@ export function computeIndicators(history: KLine[]): TechnicalIndicators {
     macdDea: dea[lastIndex] || 0,
     macdOsc: osc[lastIndex] || 0,
     macdOscPrev: osc[prevIndex] || 0,
-    bias20: bias20
+    bias20: bias20,
+    bias5: Math.round(bias5 * 100) / 100,
+    bias10: Math.round(bias10 * 100) / 100,
+    bias60: Math.round(bias60 * 100) / 100
   };
 }
 
@@ -265,7 +291,8 @@ export function checkBlackHorseStrategy(
 export function evaluateScreener(
   stock: Stock,
   industryKeyword: string = "",
-  currentTimeStr: string | null = null
+  currentTimeStr: string | null = null,
+  avoidOverheated: boolean = false
 ): FilterResult {
   const history = stock.history;
   const len = history.length;
@@ -274,7 +301,7 @@ export function evaluateScreener(
     return {
       stock,
       isMatch: false,
-      reasons: { maLong: false, shakeout: false, contraction: false, breakout: false, macdImprove: false, biasOk: false, industryMatch: false }
+      reasons: { maLong: false, shakeout: false, contraction: false, breakout: false, macdImprove: false, biasOk: false, industryMatch: false, overheated: false }
     };
   }
 
@@ -299,7 +326,14 @@ export function evaluateScreener(
                     stock.name.includes(industryKeyword.trim());
   }
 
-  const isMatch = evaluation.isBull && industryMatch;
+  // Calculate if the stock is overheated (乖離率過大)
+  const bias5Val = stock.indicators.bias5 || 0;
+  const bias10Val = stock.indicators.bias10 || 0;
+  const bias20Val = (stock.indicators.bias20 || 0) * 100; // stored as ratio, convert to %
+  const isOverheated = bias5Val > 5.0 || bias10Val > 8.0 || bias20Val > 10.0;
+
+  // If "avoidOverheated" is enabled, overheated stocks are filtered out
+  const isMatch = evaluation.isBull && industryMatch && (!avoidOverheated || !isOverheated);
 
   return {
     stock,
@@ -311,7 +345,8 @@ export function evaluateScreener(
       breakout: evaluation.details.breakout,
       macdImprove, // keep the MACD visualization
       biasOk: evaluation.details.biasOk,
-      industryMatch
+      industryMatch,
+      overheated: isOverheated
     }
   };
 }

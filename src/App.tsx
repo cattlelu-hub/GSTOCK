@@ -83,6 +83,7 @@ export default function App() {
   const [keyword, setKeyword] = React.useState<string>("");
   const [selectedStock, setSelectedStock] = React.useState<Stock | null>(null);
   const [showOnlyMatches, setShowOnlyMatches] = React.useState<boolean>(false);
+  const [avoidOverheated, setAvoidOverheated] = React.useState<boolean>(true); // Default to avoid overheated stocks
   const [countdown, setCountdown] = React.useState<number>(5);
   const [twStatus, setTwStatus] = React.useState(getTaiwanMarketStatus());
 
@@ -237,8 +238,8 @@ export default function App() {
   // Compute live filter results whenever stocks list, keyword, or time minutes changes
   const filterResults = React.useMemo(() => {
     const timeMins = twStatus.timeString ? twStatus.timeString.slice(0, 5) : null;
-    return stocks.map((s) => evaluateScreener(s, keyword, timeMins));
-  }, [stocks, keyword, twStatus.timeString ? twStatus.timeString.slice(0, 5) : ""]);
+    return stocks.map((s) => evaluateScreener(s, keyword, timeMins, avoidOverheated));
+  }, [stocks, keyword, twStatus.timeString ? twStatus.timeString.slice(0, 5) : "", avoidOverheated]);
 
   // Handle a click-to-screen from the industry board
   const handleSelectIndustry = (indName: string) => {
@@ -581,6 +582,8 @@ export default function App() {
         <ScreenerControl
           keyword={keyword}
           setKeyword={setKeyword}
+          avoidOverheated={avoidOverheated}
+          setAvoidOverheated={setAvoidOverheated}
           onRunScreener={handleRunScreener}
           matchCount={matchCount}
           totalCount={stocks.length}
