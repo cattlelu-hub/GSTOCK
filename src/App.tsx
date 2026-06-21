@@ -315,7 +315,7 @@ export default function App() {
             {/* Component statistics indicator */}
             <div className="hidden lg:flex items-center bg-[#1E222D] px-2.5 py-2 rounded border border-[#2D3139] text-[10px] gap-1">
               <span className="text-slate-500">數據來源:</span>
-              <span className="text-white font-bold">三竹股市 ({stocks.length} 檔標的)</span>
+              <span className="text-white font-bold">三竹股市 (台股所有標的)</span>
             </div>
           </div>
         </div>
