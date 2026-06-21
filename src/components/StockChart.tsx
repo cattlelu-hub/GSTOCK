@@ -210,7 +210,7 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
       <div className="bg-[#131722] border border-[#2D3139] rounded-xl p-8 flex flex-col items-center justify-center text-center text-slate-500 h-[480px]">
         <Landmark size={48} className="text-slate-700 mb-2 animate-bounce" />
         <p className="font-semibold text-slate-300">未選取任何個股</p>
-        <p className="text-xs max-w-xs mt-1 text-slate-500">請先在上方表格中點選任何一列，此處即可載入對應之三竹股市 K 線技術圖。</p>
+        <p className="text-xs max-w-xs mt-1 text-slate-500">請先在上方表格中點選任何一列，此處即可載入對應之證交所即時資訊 K 線技術圖。</p>
       </div>
     );
   }
@@ -238,9 +238,14 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#131722] text-slate-400 border border-[#2D3139] font-normal">
                 {selectedStock.industry}
               </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#131722] text-[#089981] border border-[#089981]/30 font-semibold">
-                數據來源：三竹股市
-              </span>
+              <a 
+                href="https://mis.twse.com.tw/stock/index?lang=zhHant" 
+                target="_blank" 
+                rel="noreferrer" 
+                className="text-[10px] px-2 py-0.5 rounded-full bg-[#131722] hover:bg-[#1C2030] text-[#089981] hover:text-[#0bbd9f] border border-[#089981]/30 hover:border-[#089981]/60 font-semibold transition-colors flex items-center gap-1"
+              >
+                數據來源：證交所 MIS 🌐
+              </a>
               
               {/* Trend Tag: 多方趨勢 vs 空方趨勢 */}
               {isBullishTrend ? (

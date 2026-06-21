@@ -249,7 +249,7 @@ export default function App() {
                     <Radio size={8} /> 盤中監控
                   </span>
                 </h1>
-                <p className="text-xs text-slate-500">三竹股市行情連動・強勢均線與量能多頭排列選股系統</p>
+                <p className="text-xs text-slate-500">TWSE MIS 證交所即時資訊行情連動・強勢均線與量能多頭排列選股系統</p>
               </div>
               <nav className="hidden md:flex gap-4 text-xs font-medium border-l border-[#2D3139] pl-4">
                 <span className="text-[#2962FF] border-b-2 border-[#2962FF] pb-1 cursor-pointer">盤中監控</span>
@@ -315,7 +315,14 @@ export default function App() {
             {/* Component statistics indicator */}
             <div className="hidden lg:flex items-center bg-[#1E222D] px-2.5 py-2 rounded border border-[#2D3139] text-[10px] gap-1">
               <span className="text-slate-500">數據來源:</span>
-              <span className="text-white font-bold">三竹股市 (台股所有標的)</span>
+              <a 
+                href="https://mis.twse.com.tw/stock/index?lang=zhHant" 
+                target="_blank" 
+                rel="noreferrer" 
+                className="text-white hover:text-[#0bbd9f] font-bold transition-colors underline decoration-dotted"
+              >
+                證交所 MIS (台股所有標的) 🌐
+              </a>
             </div>
           </div>
         </div>
@@ -340,7 +347,7 @@ export default function App() {
           totalCount={stocks.length}
         />
 
-        {/* BOTTOM: Split-pane Workspace (Left: Sorter spreadsheet, Right: 三竹股市線技術圖) */}
+        {/* BOTTOM: Split-pane Workspace (Left: Sorter spreadsheet, Right: 證交所即時 K 線技術圖) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">
           {/* LEFT PANEL: Stock Screener listing (7 cols) */}
           <section className="lg:col-span-7 flex flex-col min-h-[420px]">
