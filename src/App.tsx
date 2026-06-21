@@ -66,47 +66,6 @@ export default function App() {
     const interval = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
-          // Trigger price refresh on 0
-          setStocks((currentStocks) => {
-            return currentStocks.map((stock) => {
-              // 5-second minor price fluctuation (-0.4% to +0.5%)
-              const delta = (Math.random() - 0.45) * 0.007;
-              const originalClose = stock.todayClose;
-              const newClose = Math.round(originalClose * (1 + delta) * 10) / 10;
-              
-              // Updates history's latest index (Day 99)
-              const updatedHistory = [...stock.history];
-              const todayIdx = updatedHistory.length - 1;
-              if (todayIdx >= 0) {
-                const updatedToday = { ...updatedHistory[todayIdx] };
-                updatedToday.close = newClose;
-                updatedToday.high = Math.round(Math.max(updatedToday.high, newClose) * 10) / 10;
-                updatedToday.low = Math.round(Math.min(updatedToday.low, newClose) * 10) / 10;
-                updatedHistory[todayIdx] = updatedToday;
-              }
-
-              // Recalculate indicators with updated close price
-              const lastIndices = updatedHistory.length - 1;
-              const yesterdayClose = updatedHistory[lastIndices - 1]?.close || originalClose;
-              const changePercentage = Math.round(((newClose - yesterdayClose) / yesterdayClose) * 10000) / 100;
-
-              return {
-                ...stock,
-                todayClose: newClose,
-                todayHigh: Math.max(stock.todayHigh, newClose),
-                todayLow: Math.min(stock.todayLow, newClose),
-                changePercentage,
-                history: updatedHistory,
-                // re-execute indicators helper
-                indicators: {
-                  ...stock.indicators,
-                  // quick-patch today close metrics
-                  bias20: stock.indicators.ma20 > 0 ? (newClose - stock.indicators.ma20) / stock.indicators.ma20 : 0
-                }
-              };
-            });
-          });
-
           return 5; // Reset timer count
         }
         return prev - 1;
@@ -115,6 +74,52 @@ export default function App() {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Update prices periodically when the countdown resets
+  React.useEffect(() => {
+    if (countdown === 5) {
+      setStocks((currentStocks) => {
+        if (currentStocks.length === 0) return currentStocks;
+        return currentStocks.map((stock) => {
+          // 5-second minor price fluctuation (-0.4% to +0.5%)
+          const delta = (Math.random() - 0.45) * 0.007;
+          const originalClose = stock.todayClose;
+          const newClose = Math.round(originalClose * (1 + delta) * 10) / 10;
+          
+          // Updates history's latest index (Day 99)
+          const updatedHistory = [...stock.history];
+          const todayIdx = updatedHistory.length - 1;
+          if (todayIdx >= 0) {
+            const updatedToday = { ...updatedHistory[todayIdx] };
+            updatedToday.close = newClose;
+            updatedToday.high = Math.round(Math.max(updatedToday.high, newClose) * 10) / 10;
+            updatedToday.low = Math.round(Math.min(updatedToday.low, newClose) * 10) / 10;
+            updatedHistory[todayIdx] = updatedToday;
+          }
+
+          // Recalculate indicators with updated close price
+          const lastIndices = updatedHistory.length - 1;
+          const yesterdayClose = updatedHistory[lastIndices - 1]?.close || originalClose;
+          const changePercentage = Math.round(((newClose - yesterdayClose) / yesterdayClose) * 10000) / 100;
+
+          return {
+            ...stock,
+            todayClose: newClose,
+            todayHigh: Math.max(stock.todayHigh, newClose),
+            todayLow: Math.min(stock.todayLow, newClose),
+            changePercentage,
+            history: updatedHistory,
+            // re-execute indicators helper
+            indicators: {
+              ...stock.indicators,
+              // quick-patch today close metrics
+              bias20: stock.indicators.ma20 > 0 ? (newClose - stock.indicators.ma20) / stock.indicators.ma20 : 0
+            }
+          };
+        });
+      });
+    }
+  }, [countdown]);
 
   // Make sure selected stock stays fully up-to-date with computed ticking prices
   const activeSelectedStock = React.useMemo(() => {

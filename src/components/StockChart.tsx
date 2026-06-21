@@ -22,157 +22,184 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
   React.useEffect(() => {
     if (!chartContainerRef.current || !selectedStock) return;
 
-    // Clean up any existing chart
-    if (chartRef.current) {
-      chartRef.current.remove();
-      chartRef.current = null;
+    let activeChart: any = null;
+    let resizeObserver: ResizeObserver | null = null;
+
+    try {
+      // Clean up any existing chart
+      if (chartRef.current) {
+        try {
+          chartRef.current.remove();
+        } catch (err) {
+          console.warn("Error removing previous chart instance:", err);
+        }
+        chartRef.current = null;
+      }
+
+      const container = chartContainerRef.current;
+      const initialWidth = container.clientWidth || 300;
+      
+      // Create new chart instance with typecasting to circumvent version 4 type signatures
+      const chart = createChart(container, {
+        width: initialWidth,
+        height: 380,
+        layout: {
+          background: { type: ColorType.Solid, color: "#131722" },
+          textColor: "#94a3b8",
+          fontSize: 10,
+          fontFamily: "JetBrains Mono, SFMono-Regular, Consolas, monospace",
+        },
+        grid: {
+          vertLines: { color: "rgba(45, 49, 57, 0.3)", style: 1 },
+          horzLines: { color: "rgba(45, 49, 57, 0.3)", style: 1 },
+        },
+        crosshair: {
+          mode: CrosshairMode.Normal,
+        },
+        rightPriceScale: {
+          borderColor: "rgba(148, 163, 184, 0.15)",
+          scaleMargins: {
+            top: 0.1,
+            bottom: 0.25, // leave bottom room for volume
+          },
+        },
+        timeScale: {
+          borderColor: "rgba(148, 163, 184, 0.15)",
+          timeVisible: false,
+          secondsVisible: false,
+        },
+      }) as any;
+
+      activeChart = chart;
+      chartRef.current = chart;
+
+      // Add Candlestick Series (styled using Taiwan rules: Red for Bullish Close >= Open, Green for Bearish)
+      const candlestickSeries = chart.addCandlestickSeries({
+        upColor: "#F23645",
+        downColor: "#089981",
+        borderUpColor: "#F23645",
+        borderDownColor: "#089981",
+        wickUpColor: "#F23645",
+        wickDownColor: "#089981",
+      });
+
+      // Populate Candlestick Data
+      const cData = selectedStock.history.map((h) => ({
+        time: h.time,
+        open: h.open,
+        high: h.high,
+        low: h.low,
+        close: h.close,
+      }));
+      candlestickSeries.setData(cData);
+
+      // Add Volume Series as Subchart at bottom (bottom 20%)
+      const volumeSeries = chart.addHistogramSeries({
+        priceFormat: {
+          type: "volume",
+        },
+        priceScaleId: "volume-scale", // Custom price scale ID to separate from prices
+      });
+
+      chart.priceScale("volume-scale").applyOptions({
+        scaleMargins: {
+          top: 0.8, // Take only bottom 20%
+          bottom: 0,
+        },
+      });
+
+      // Colorize volume bars based on close >= open (red for bullish volumes, green for bearish)
+      const vData = selectedStock.history.map((h) => ({
+        time: h.time,
+        value: h.volume,
+        color: h.close >= h.open ? "rgba(242, 54, 69, 0.45)" : "rgba(8, 153, 129, 0.45)",
+      }));
+      volumeSeries.setData(vData);
+
+      // Calculate Moving Averages for all 100 days
+      const prices = selectedStock.history.map((h) => h.close);
+      const ma5Values = calculateSMA(prices, 5);
+      const ma10Values = calculateSMA(prices, 10);
+      const ma20Values = calculateSMA(prices, 20);
+      const ma60Values = calculateSMA(prices, 60);
+
+      const timeKeys = selectedStock.history.map((h) => h.time);
+
+      // helper to map array to lightweight charts line format
+      const createLineData = (values: number[], period: number) => {
+        const lineData = [];
+        for (let i = period - 1; i < values.length; i++) {
+          if (values[i] > 0) {
+            lineData.push({ time: timeKeys[i], value: values[i] });
+          }
+        }
+        return lineData;
+      };
+
+      // Add 5MA (Blue)
+      const line5Series = chart.addLineSeries({
+        color: "#3b82f6",
+        lineWidth: 1.5,
+        title: "5MA",
+      });
+      line5Series.setData(createLineData(ma5Values, 5));
+
+      // Add 10MA (Yellow)
+      const line10Series = chart.addLineSeries({
+        color: "#eab308",
+        lineWidth: 1.5,
+        title: "10MA",
+      });
+      line10Series.setData(createLineData(ma10Values, 10));
+
+      // Add 20MA (Pink)
+      const line20Series = chart.addLineSeries({
+        color: "#ec4899",
+        lineWidth: 2,
+        title: "20MA (月)",
+      });
+      line20Series.setData(createLineData(ma20Values, 20));
+
+      // Add 60MA (Teal)
+      const line60Series = chart.addLineSeries({
+        color: "#14b8a6",
+        lineWidth: 2,
+        title: "60MA (季)",
+      });
+      line60Series.setData(createLineData(ma60Values, 60));
+
+      // Fit content inside the screen visible bounds
+      chart.timeScale().fitContent();
+
+      // ResizeObserver implementation to guarantee responsive fluid sizing
+      resizeObserver = new ResizeObserver((entries) => {
+        if (entries.length === 0 || !chart) return;
+        const width = entries[0].contentRect.width;
+        if (width > 0) {
+          try {
+            chart.applyOptions({ width });
+          } catch (err) {
+            console.warn("Failed to apply size options directly:", err);
+          }
+        }
+      });
+      resizeObserver.observe(container);
+    } catch (e) {
+      console.error("Runtime error initializing lightweight-charts:", e);
     }
 
-    const container = chartContainerRef.current;
-    
-    // Create new chart instance with typecasting to circumvent version 4 type signatures
-    const chart = createChart(container, {
-      width: container.clientWidth,
-      height: 380,
-      layout: {
-        background: { type: ColorType.Solid, color: "#131722" },
-        textColor: "#94a3b8",
-        fontSize: 10,
-        fontFamily: "JetBrains Mono, SFMono-Regular, Consolas, monospace",
-      },
-      grid: {
-        vertLines: { color: "rgba(45, 49, 57, 0.3)", style: 1 },
-        horzLines: { color: "rgba(45, 49, 57, 0.3)", style: 1 },
-      },
-      crosshair: {
-        mode: CrosshairMode.Normal,
-      },
-      rightPriceScale: {
-        borderColor: "rgba(148, 163, 184, 0.15)",
-        scaleMargins: {
-          top: 0.1,
-          bottom: 0.25, // leave bottom room for volume
-        },
-      },
-      timeScale: {
-        borderColor: "rgba(148, 163, 184, 0.15)",
-        timeVisible: false,
-        secondsVisible: false,
-      },
-    }) as any;
-
-    chartRef.current = chart;
-
-    // Add Candlestick Series (styled using Taiwan rules: Red for Bullish Close >= Open, Green for Bearish)
-    const candlestickSeries = chart.addCandlestickSeries({
-      upColor: "#F23645",
-      downColor: "#089981",
-      borderUpColor: "#F23645",
-      borderDownColor: "#089981",
-      wickUpColor: "#F23645",
-      wickDownColor: "#089981",
-    });
-
-    // Populate Candlestick Data
-    const cData = selectedStock.history.map((h) => ({
-      time: h.time,
-      open: h.open,
-      high: h.high,
-      low: h.low,
-      close: h.close,
-    }));
-    candlestickSeries.setData(cData);
-
-    // Add Volume Series as Subchart at bottom (bottom 20%)
-    const volumeSeries = chart.addHistogramSeries({
-      priceFormat: {
-        type: "volume",
-      },
-      priceScaleId: "volume-scale", // Custom price scale ID to separate from prices
-    });
-
-    chart.priceScale("volume-scale").applyOptions({
-      scaleMargins: {
-        top: 0.8, // Take only bottom 20%
-        bottom: 0,
-      },
-    });
-
-    // Colorize volume bars based on close >= open (red for bullish volumes, green for bearish)
-    const vData = selectedStock.history.map((h) => ({
-      time: h.time,
-      value: h.volume,
-      color: h.close >= h.open ? "rgba(242, 54, 69, 0.45)" : "rgba(8, 153, 129, 0.45)",
-    }));
-    volumeSeries.setData(vData);
-
-    // Calculate Moving Averages for all 100 days
-    const prices = selectedStock.history.map((h) => h.close);
-    const ma5Values = calculateSMA(prices, 5);
-    const ma10Values = calculateSMA(prices, 10);
-    const ma20Values = calculateSMA(prices, 20);
-    const ma60Values = calculateSMA(prices, 60);
-
-    const timeKeys = selectedStock.history.map((h) => h.time);
-
-    // helper to map array to lightweight charts line format
-    const createLineData = (values: number[], period: number) => {
-      const lineData = [];
-      for (let i = period - 1; i < values.length; i++) {
-        if (values[i] > 0) {
-          lineData.push({ time: timeKeys[i], value: values[i] });
+    return () => {
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      if (activeChart) {
+        try {
+          activeChart.remove();
+        } catch (err) {
+          console.warn("Failed to remove chart instance in cleanup:", err);
         }
       }
-      return lineData;
-    };
-
-    // Add 5MA (Blue)
-    const line5Series = chart.addLineSeries({
-      color: "#3b82f6",
-      lineWidth: 1.5,
-      title: "5MA",
-    });
-    line5Series.setData(createLineData(ma5Values, 5));
-
-    // Add 10MA (Yellow)
-    const line10Series = chart.addLineSeries({
-      color: "#eab308",
-      lineWidth: 1.5,
-      title: "10MA",
-    });
-    line10Series.setData(createLineData(ma10Values, 10));
-
-    // Add 20MA (Pink)
-    const line20Series = chart.addLineSeries({
-      color: "#ec4899",
-      lineWidth: 2,
-      title: "20MA (月)",
-    });
-    line20Series.setData(createLineData(ma20Values, 20));
-
-    // Add 60MA (Teal)
-    const line60Series = chart.addLineSeries({
-      color: "#14b8a6",
-      lineWidth: 2,
-      title: "60MA (季)",
-    });
-    line60Series.setData(createLineData(ma60Values, 60));
-
-    // Fit content inside the screen visible bounds
-    chart.timeScale().fitContent();
-
-    // ResizeObserver implementation to guarantee responsive fluid sizing
-    const resizeObserver = new ResizeObserver((entries) => {
-      if (entries.length === 0 || !chart) return;
-      const { width } = entries[0].contentRect;
-      chart.applyOptions({ width });
-    });
-    resizeObserver.observe(container);
-
-    return () => {
-      resizeObserver.disconnect();
-      if (chartRef.current) {
-        chartRef.current.remove();
+      if (chartRef.current === activeChart) {
         chartRef.current = null;
       }
     };
