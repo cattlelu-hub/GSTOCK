@@ -86,6 +86,13 @@ export default function App() {
   const [countdown, setCountdown] = React.useState<number>(5);
   const [twStatus, setTwStatus] = React.useState(getTaiwanMarketStatus());
 
+  const handleSetKeyword = (val: string) => {
+    setKeyword(val);
+    if (val.trim() !== "") {
+      setShowOnlyMatches(false);
+    }
+  };
+
   // Yahoo Finance synchronization states
   const [isSyncingYahoo, setIsSyncingYahoo] = React.useState<boolean>(false);
   const [yahooSyncProgress, setYahooSyncProgress] = React.useState<number>(0);
@@ -566,7 +573,7 @@ export default function App() {
         {/* MIDDLE: Advanced Screener Command Console */}
         <ScreenerControl
           keyword={keyword}
-          setKeyword={setKeyword}
+          setKeyword={handleSetKeyword}
           avoidOverheated={avoidOverheated}
           setAvoidOverheated={setAvoidOverheated}
           onRunScreener={handleRunScreener}

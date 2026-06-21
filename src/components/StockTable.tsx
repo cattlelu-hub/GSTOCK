@@ -11,7 +11,7 @@ interface StockTableProps {
   setShowOnlyMatches: (val: boolean) => void;
 }
 
-type SortKey = "symbol" | "name" | "todayClose" | "changePercentage" | "todayVolume" | "bias20" | "industry";
+type SortKey = "symbol" | "name" | "todayClose" | "changePercentage" | "todayVolume" | "bias20" | "industry" | "isMatch";
 type SortOrder = "asc" | "desc";
 
 export default function StockTable({
@@ -43,20 +43,19 @@ export default function StockTable({
         isMatch: filterRes?.isMatch ?? false,
         bias20: s.indicators.bias20,
         overheated: filterRes?.reasons.overheated ?? false,
+        industryMatch: filterRes?.reasons.industryMatch ?? true,
       };
     });
 
+    // Always filter by the theme/keyword search first (meaning industryMatch must be true)
+    result = result.filter((item) => item.industryMatch);
+
     if (showOnlyMatches) {
       result = result.filter((item) => item.isMatch);
-    } else {
-      // Sort by changePercentage descending to capture all stocks and limit to top 300 gainers
-      result = [...result]
-        .sort((a, b) => b.stock.changePercentage - a.stock.changePercentage)
-        .slice(0, 300);
     }
 
-    // Perform sorting
-    return result.sort((a, b) => {
+    // Perform sorting across the entire list (or matched sub-list) before caching/slicing
+    const sortedResult = [...result].sort((a, b) => {
       let valA: any;
       let valB: any;
 
@@ -89,10 +88,19 @@ export default function StockTable({
           valA = a.stock.industry;
           valB = b.stock.industry;
           break;
+        case "isMatch":
+          // Priority score: 2 = 黑馬 (isMatch), 1 = 過熱 (overheated), 0 = 不符
+          valA = a.isMatch ? 2 : (a.overheated ? 1 : 0);
+          valB = b.isMatch ? 2 : (b.overheated ? 1 : 0);
+          break;
         default:
           valA = a.stock.symbol;
           valB = b.stock.symbol;
       }
+
+      // Safe checks for undefined/null values
+      if (valA === undefined || valA === null) valA = 0;
+      if (valB === undefined || valB === null) valB = 0;
 
       if (typeof valA === "string") {
         return sortOrder === "asc"
@@ -102,6 +110,13 @@ export default function StockTable({
         return sortOrder === "asc" ? valA - valB : valB - valA;
       }
     });
+
+    // If showing all, slice to top 300 sorted elements to prevent rendering too many DOM rows
+    if (!showOnlyMatches) {
+      return sortedResult.slice(0, 300);
+    }
+
+    return sortedResult;
   }, [stocks, resultsMap, showOnlyMatches, sortKey, sortOrder]);
 
   const handleSort = (key: SortKey) => {
@@ -208,7 +223,12 @@ export default function StockTable({
               >
                 產業 {renderSortIcon("industry")}
               </th>
-              <th className="p-3 text-center w-[8%]">選股狀態</th>
+              <th
+                onClick={() => handleSort("isMatch")}
+                className="p-3 text-center cursor-pointer hover:bg-[#2D3139] transition-colors select-none w-[8%]"
+              >
+                選股狀態 {renderSortIcon("isMatch")}
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#2D3139]">
