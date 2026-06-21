@@ -7,7 +7,7 @@ import React from "react";
 import { generateStockMarket } from "./utils/stockGenerator";
 import { evaluateScreener, computeIndicators } from "./utils/indicators";
 import { Stock, FilterResult } from "./types";
-import { fetchYahooStockHistory, fetchYahooRealTimeTick } from "./utils/yahooService";
+import { fetchYahooStockHistory, fetchYahooRealTimeTick, tickerNamesCache } from "./utils/yahooService";
 import IndustryBoard from "./components/IndustryBoard";
 import ScreenerControl from "./components/ScreenerControl";
 import StockTable from "./components/StockTable";
@@ -84,13 +84,16 @@ export default function App() {
   const [selectedStock, setSelectedStock] = React.useState<Stock | null>(null);
   const [showOnlyMatches, setShowOnlyMatches] = React.useState<boolean>(false);
   const [countdown, setCountdown] = React.useState<number>(5);
-  const [marketMode, setMarketMode] = React.useState<"strict" | "always">("always"); // Default always to keep tickers dynamic
   const [twStatus, setTwStatus] = React.useState(getTaiwanMarketStatus());
 
   // Yahoo Finance synchronization states
   const [isSyncingYahoo, setIsSyncingYahoo] = React.useState<boolean>(false);
   const [yahooSyncProgress, setYahooSyncProgress] = React.useState<number>(0);
   const [yahooSyncStatus, setYahooSyncStatus] = React.useState<string>("");
+
+  // Target-stock dynamic resolver states
+  const [isResolvingSymbol, setIsResolvingSymbol] = React.useState<boolean>(false);
+  const [resolvingStatus, setResolvingStatus] = React.useState<string>("");
 
   // Update Taiwan Clock status every second
   React.useEffect(() => {
@@ -138,6 +141,97 @@ export default function App() {
         }
       }
     }
+  }, [keyword, stocks]);
+
+  // Dynamic TWD stock seeker for automatic on-demand scans of ANY main or OTC stock
+  React.useEffect(() => {
+    if (!keyword) return;
+    const trimmed = keyword.trim().replace(/\D/g, ""); // Extract numbers
+    
+    // Check if the search contains a potential 4-digit or 5-digit Taiwan Stock Code
+    if (trimmed.length < 4 || trimmed.length > 6) return;
+
+    // Reject if already in loaded pool
+    const exists = stocks.some((s) => s.symbol === trimmed);
+    if (exists) return;
+
+    let isAborted = false;
+
+    const queryAndInjectStock = async () => {
+      setIsResolvingSymbol(true);
+      setResolvingStatus(`🔍 正在實時聯網解析台股 [${trimmed}] 行情歷史與篩選指標...`);
+      try {
+        const history = await fetchYahooStockHistory(trimmed);
+        if (isAborted) return;
+
+        if (history && history.length > 0) {
+          const compRealName = tickerNamesCache.get(trimmed) || `台股 ${trimmed}`;
+          
+          // Classify industry based on standard stock codes
+          let resolvedIndustry = "聯網自選股";
+          if (trimmed.startsWith("23") || trimmed.startsWith("24") || trimmed.startsWith("30")) {
+            resolvedIndustry = "半導體";
+          } else if (trimmed.startsWith("26")) {
+            resolvedIndustry = "航運";
+          } else if (trimmed.startsWith("28")) {
+            resolvedIndustry = "金融";
+          } else if (trimmed.startsWith("32") || trimmed.startsWith("35") || trimmed.startsWith("53") || trimmed.startsWith("80")) {
+            resolvedIndustry = "光電";
+          } else if (trimmed.startsWith("11") || trimmed.startsWith("12") || trimmed.startsWith("13")) {
+            resolvedIndustry = "傳產水泥食品";
+          }
+
+          const indicators = computeIndicators(history);
+          const lastH = history[history.length - 1];
+          const prevH = history[history.length - 2] || lastH;
+          const changePerc = Math.round(((lastH.close - prevH.close) / prevH.close) * 10000) / 100;
+
+          const dynamicStock: Stock = {
+            symbol: trimmed,
+            name: compRealName,
+            industry: resolvedIndustry,
+            history,
+            indicators,
+            changePercentage: changePerc,
+            todayClose: lastH.close,
+            todayOpen: lastH.open,
+            todayHigh: lastH.high,
+            todayLow: lastH.low,
+            todayVolume: lastH.volume,
+            isYahooSynced: true
+          };
+
+          setStocks((prev) => {
+            if (prev.some((s) => s.symbol === dynamicStock.symbol)) return prev;
+            return [dynamicStock, ...prev];
+          });
+          setSelectedStock(dynamicStock);
+          setResolvingStatus(`✓ 成功新增 [${trimmed} ${compRealName}]！已同步納入量化探針篩選範圍`);
+          setTimeout(() => {
+            if (!isAborted) setResolvingStatus("");
+          }, 3000);
+        }
+      } catch (err: any) {
+        if (!isAborted) {
+          setResolvingStatus(`✗ 無法搜尋代碼 ${trimmed}: ${err.message || err}`);
+          setTimeout(() => {
+            if (!isAborted) setResolvingStatus("");
+          }, 5000);
+        }
+      } finally {
+        if (!isAborted) setIsResolvingSymbol(false);
+      }
+    };
+
+    // Debounce to allow user to finish typing code
+    const delayTimer = setTimeout(() => {
+      queryAndInjectStock();
+    }, 600);
+
+    return () => {
+      isAborted = true;
+      clearTimeout(delayTimer);
+    };
   }, [keyword, stocks]);
 
   // Compute live filter results whenever stocks list, keyword, or time minutes changes
@@ -296,7 +390,7 @@ export default function App() {
           // If this stock is the active selected stock, perform higher-amplitude shadow ticks
           const isSelected = selectedStock && stock.symbol === selectedStock.symbol;
           const isTrading = twStatus.isTradingHours;
-          const shouldTick = marketMode === "always" || isTrading;
+          const shouldTick = isTrading;
 
           if (!shouldTick) return stock;
 
@@ -336,7 +430,7 @@ export default function App() {
     }, 2000);
 
     return () => clearInterval(liveTimer);
-  }, [selectedStock, marketMode, twStatus.isTradingHours]);
+  }, [selectedStock, twStatus.isTradingHours]);
 
   // 4. Periodic background real-time quote sync (every 14s) from Yahoo APIs directly
   React.useEffect(() => {
@@ -451,30 +545,10 @@ export default function App() {
               </div>
             </div>
 
-            {/* Mode Selector Pill Buttons */}
-            <div className="flex bg-[#1E222D] p-0.5 rounded border border-[#2D3139] items-center text-[10px]">
-              <button
-                onClick={() => setMarketMode("strict")}
-                className={`px-2 py-1 rounded transition-colors ${
-                  marketMode === "strict"
-                    ? "bg-[#2962FF] text-white font-bold"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-                title="只在台北時間週一至週五 09:00-13:30 期間刷新股價，其餘休市時間靜止"
-              >
-                真實時間連動
-              </button>
-              <button
-                onClick={() => setMarketMode("always")}
-                className={`px-2 py-1 rounded transition-colors ${
-                  marketMode === "always"
-                    ? "bg-[#2962FF] text-white font-bold"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-                title="忽視當前時間，全天候 24/7 持續模擬盤中股價波動刷新數據"
-              >
-                全天候模擬
-              </button>
+            {/* Market Connection Indicator */}
+            <div className="flex bg-[#1E222D] px-2.5 py-1.5 rounded border border-[#2D3139] items-center text-[10px] text-emerald-400 font-mono gap-1.5 select-none" title="直連台灣證券交易所行情，休市期間静止">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#0bbd9f] animate-pulse"></span>
+              <span>證交所即時串流連線中</span>
             </div>
 
             {/* Component statistics indicator */}
@@ -500,7 +574,7 @@ export default function App() {
           stocks={stocks}
           onSelectIndustry={handleSelectIndustry}
           countdown={countdown}
-          isRefreshPaused={marketMode === "strict" && !twStatus.isTradingHours}
+          isRefreshPaused={!twStatus.isTradingHours}
         />
 
         {/* MIDDLE: Advanced Screener Command Console */}
@@ -515,6 +589,16 @@ export default function App() {
           yahooSyncProgress={yahooSyncProgress}
           yahooSyncStatus={yahooSyncStatus}
         />
+
+        {/* Live dynamic explorer load feedback board */}
+        {resolvingStatus && (
+          <div className="bg-[#1E222D] border border-emerald-500/20 px-4 py-3 rounded-xl text-xs font-mono flex items-center justify-between text-slate-300 animate-pulse shadow-md">
+            <span className="flex items-center gap-2">
+              <span className="inline-block w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></span>
+              <span className="font-semibold text-emerald-400">{resolvingStatus}</span>
+            </span>
+          </div>
+        )}
 
         {/* BOTTOM: Split-pane Workspace (Left: Sorter spreadsheet, Right: 證交所即時 K 線技術圖) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">

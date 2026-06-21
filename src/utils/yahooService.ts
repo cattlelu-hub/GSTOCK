@@ -11,6 +11,9 @@ const OTC_SYMBOLS = new Set([
   "5347", "3529", "3264", "3324", "2636"
 ]);
 
+// Export a dynamic real name cache for on-demand resolved stocks
+export const tickerNamesCache = new Map<string, string>();
+
 /**
  * Get the accurate Yahoo Finance ticker for Taiwan stocks.
  */
@@ -25,120 +28,119 @@ export function getYahooTicker(symbol: string): string {
 
 /**
  * Fetch historical data for a Taiwanese stock from Yahoo Finance.
- * Uses robust fail-over CORS proxying.
+ * Uses robust fail-over CORS proxying. Supports automatic TW (listed) and TWO (OTC) fallbacks.
  */
 export async function fetchYahooStockHistory(symbol: string): Promise<KLine[]> {
-  const ticker = getYahooTicker(symbol);
-  // Request 150 days to ensure we have at least 100 trading days
-  const yahooAPI = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=150d&interval=1d`;
+  const cleanSymbol = symbol.trim().replace(/\D/g, "");
+  if (!cleanSymbol) {
+    throw new Error("個股代號不能為空");
+  }
 
-  const proxies = [
-    (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-    (url: string) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
-  ];
-
-  let rawDataText = "";
-  let success = false;
+  // Dual-Market candidates list (TW and TWO) to ensure we scan absolutely all Taiwan stocks
+  const suffixes = OTC_SYMBOLS.has(cleanSymbol) ? [".TWO", ".TW"] : [".TW", ".TWO"];
   let lastErrorMsg = "";
 
-  for (const proxyFn of proxies) {
-    try {
-      const proxyUrl = proxyFn(yahooAPI);
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
+  for (const suffix of suffixes) {
+    const ticker = `${cleanSymbol}${suffix}`;
+    const yahooAPI = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=150d&interval=1d`;
 
-      const res = await fetch(proxyUrl, { signal: controller.signal });
-      clearTimeout(timeoutId);
+    const proxies = [
+      (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+      (url: string) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
+    ];
 
-      if (!res.ok) {
-        throw new Error(`HTTP status ${res.status}`);
+    for (const proxyFn of proxies) {
+      try {
+        const proxyUrl = proxyFn(yahooAPI);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000); // 6s timeout
+
+        const res = await fetch(proxyUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+          throw new Error(`HTTP status ${res.status}`);
+        }
+
+        const resJson = await res.json();
+        let rawDataText = "";
+
+        if (resJson && typeof resJson === "object" && "contents" in resJson) {
+          rawDataText = resJson.contents;
+        } else {
+          rawDataText = JSON.stringify(resJson);
+        }
+
+        if (rawDataText && rawDataText.trim().startsWith("{")) {
+          const parsed = JSON.parse(rawDataText);
+          const result = parsed?.chart?.result?.[0];
+          
+          if (result && result.timestamp && result.timestamp.length > 0) {
+            // Extract company name and add to name lookup dictionary
+            const displayName = result.meta?.shortName || result.meta?.longName || `台股 ${cleanSymbol}`;
+            tickerNamesCache.set(cleanSymbol, displayName);
+
+            const timestamps: number[] = result.timestamp || [];
+            const indicatorsObj = result.indicators?.quote?.[0];
+
+            if (indicatorsObj && timestamps.length > 0) {
+              const opens: (number | null)[] = indicatorsObj.open || [];
+              const highs: (number | null)[] = indicatorsObj.high || [];
+              const lows: (number | null)[] = indicatorsObj.low || [];
+              const closes: (number | null)[] = indicatorsObj.close || [];
+              const volumes: (number | null)[] = indicatorsObj.volume || [];
+
+              const klines: KLine[] = [];
+
+              for (let i = 0; i < timestamps.length; i++) {
+                const open = opens[i];
+                const high = highs[i];
+                const low = lows[i];
+                const close = closes[i];
+                const volume = volumes[i];
+
+                if (
+                  open === null || open === undefined ||
+                  high === null || high === undefined ||
+                  low === null || low === undefined ||
+                  close === null || close === undefined ||
+                  volume === null || volume === undefined
+                ) {
+                  continue;
+                }
+
+                const dateStr = new Date(timestamps[i] * 1000).toISOString().split("T")[0];
+
+                klines.push({
+                  time: dateStr,
+                  open: Math.round(open * 100) / 100,
+                  high: Math.round(high * 100) / 100,
+                  low: Math.round(low * 100) / 100,
+                  close: Math.round(close * 100) / 100,
+                  volume: Math.round(volume / 1000) // Convert shares block to lots
+                });
+              }
+
+              // Sort oldest to newest
+              klines.sort((a, b) => a.time.localeCompare(b.time));
+
+              if (klines.length > 0) {
+                if (klines.length > 100) {
+                  return klines.slice(klines.length - 100);
+                }
+                return klines;
+              }
+            }
+          }
+        }
+      } catch (err: any) {
+        lastErrorMsg = err?.message || String(err);
+        console.warn(`Attempt failed for Yahoo query ${ticker} via proxy:`, err.message || err);
       }
-
-      const resJson = await res.json();
-      
-      // AllOrigins returns it wrapper inside { contents: "..." }
-      if (resJson && typeof resJson === "object" && "contents" in resJson) {
-        rawDataText = resJson.contents;
-      } else {
-        rawDataText = JSON.stringify(resJson);
-      }
-
-      if (rawDataText && rawDataText.trim().startsWith("{")) {
-        success = true;
-        break;
-      }
-    } catch (err: any) {
-      lastErrorMsg = err?.message || String(err);
-      console.warn(`Proxy failed for Yahoo query ${ticker}:`, err);
     }
   }
 
-  if (!success) {
-    throw new Error(`CORS 代理均載入失敗 (${lastErrorMsg || "連線逾時"})`);
-  }
-
-  const parsed = JSON.parse(rawDataText);
-  const result = parsed?.chart?.result?.[0];
-  
-  if (!result) {
-    throw new Error("Yahoo Finance 返回資料結構異常，或找不到此代號之行情資料。");
-  }
-
-  const timestamps: number[] = result.timestamp || [];
-  const indicatorsObj = result.indicators?.quote?.[0];
-
-  if (!indicatorsObj || timestamps.length === 0) {
-    throw new Error("Yahoo 交易行情數據為空，此時段可能尚無可用資料。");
-  }
-
-  const opens: (number | null)[] = indicatorsObj.open || [];
-  const highs: (number | null)[] = indicatorsObj.high || [];
-  const lows: (number | null)[] = indicatorsObj.low || [];
-  const closes: (number | null)[] = indicatorsObj.close || [];
-  const volumes: (number | null)[] = indicatorsObj.volume || [];
-
-  const klines: KLine[] = [];
-
-  for (let i = 0; i < timestamps.length; i++) {
-    const timestamp = timestamps[i];
-    const open = opens[i];
-    const high = highs[i];
-    const low = lows[i];
-    const close = closes[i];
-    const volume = volumes[i];
-
-    // Filter out rows missing core prices
-    if (
-      open === null || open === undefined ||
-      high === null || high === undefined ||
-      low === null || low === undefined ||
-      close === null || close === undefined ||
-      volume === null || volume === undefined
-    ) {
-      continue;
-    }
-
-    const dateStr = new Date(timestamp * 1000).toISOString().split("T")[0];
-
-    klines.push({
-      time: dateStr,
-      open: Math.round(open * 100) / 100,
-      high: Math.round(high * 100) / 100,
-      low: Math.round(low * 100) / 100,
-      close: Math.round(close * 100) / 105, // Slight adjustment if calibration required, but let's just keep close
-      volume: Math.round(volume / 1000) // Convert shares to "張" (台灣股常用單位)
-    });
-  }
-
-  // Ensure sorting oldest to newest
-  klines.sort((a, b) => a.time.localeCompare(b.time));
-
-  // If we have more than 100 days, take the newest 100
-  if (klines.length > 100) {
-    return klines.slice(klines.length - 100);
-  }
-
-  return klines;
+  throw new Error(`在 TWSE 及 OTC 市場均無法查到代號 ${cleanSymbol} 股價歷史 (原因: ${lastErrorMsg})`);
 }
 
 /**
