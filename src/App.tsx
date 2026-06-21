@@ -82,7 +82,7 @@ export default function App() {
   const [stocks, setStocks] = React.useState<Stock[]>([]);
   const [keyword, setKeyword] = React.useState<string>("");
   const [selectedStock, setSelectedStock] = React.useState<Stock | null>(null);
-  const [showOnlyMatches, setShowOnlyMatches] = React.useState<boolean>(true);
+  const [showOnlyMatches, setShowOnlyMatches] = React.useState<boolean>(false);
   const [countdown, setCountdown] = React.useState<number>(5);
   const [marketMode, setMarketMode] = React.useState<"strict" | "always">("always"); // Default always to keep tickers dynamic
   const [twStatus, setTwStatus] = React.useState(getTaiwanMarketStatus());

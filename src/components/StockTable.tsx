@@ -48,9 +48,10 @@ export default function StockTable({
     if (showOnlyMatches) {
       result = result.filter((item) => item.isMatch);
     } else {
-      // Sort by changePercentage descending to capture all stocks
+      // Sort by changePercentage descending to capture all stocks and limit to top 90 gainers
       result = [...result]
-        .sort((a, b) => b.stock.changePercentage - a.stock.changePercentage);
+        .sort((a, b) => b.stock.changePercentage - a.stock.changePercentage)
+        .slice(0, 90);
     }
 
     // Perform sorting
@@ -139,7 +140,7 @@ export default function StockTable({
             className={`px-3 py-1.5 rounded-md text-xs font-semibold cursor-pointer transition-all ${
               showOnlyMatches
                 ? "bg-[#2962FF] text-white shadow"
-                : "text-slate-455 hover:text-slate-200"
+                : "text-slate-400 hover:text-slate-200"
             }`}
           >
             🔥 滿足黑馬股 ({matchesCount})
@@ -152,8 +153,9 @@ export default function StockTable({
                 ? "bg-[#2962FF] text-white shadow"
                 : "text-slate-400 hover:text-slate-200"
             }`}
+            title="免除 API 金鑰限制，套用台股並依當前市場漲幅排序，前 90 名強勢標的一覽"
           >
-            🌐 台股所有標的
+            🌐 台股漲幅前 90 名 (免金鑰)
           </button>
         </div>
       </div>
