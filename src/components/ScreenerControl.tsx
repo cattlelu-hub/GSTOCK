@@ -28,14 +28,6 @@ export default function ScreenerControl({
   yahooSyncProgress,
   yahooSyncStatus,
 }: ScreenerControlProps) {
-  const quickTags = [
-    "半導體", "AI伺服器", "PCB", "記憶體", "被動元件", 
-    "光通訊", "功率元件", "玻璃基板", "設備廠", 
-    "玻纖布", "低軌衛星", "銅箔基板", "砷化鎵", 
-    "探針卡", "MCU", "電源供應器", "IC設計",
-    "航運", "生技", "光電", "金融"
-  ];
-
   return (
     <div className="bg-[#131722] border border-[#2D3139] rounded-xl p-5 shadow-lg text-[#D1D4DC]" id="screener-control-section">
       <div className="mb-4">
@@ -50,9 +42,6 @@ export default function ScreenerControl({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
         {/* Industry classification keyword input */}
         <div className="flex-1">
-          <label className="block text-xs font-semibold text-slate-400 mb-1.5 flex items-center gap-1">
-            今日主流題材 / 股票名稱 / 代碼
-          </label>
           <div className="relative">
             <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
               <Search size={16} />
@@ -61,7 +50,7 @@ export default function ScreenerControl({
               type="text"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="輸入關鍵字如 '半導體'、'2330' 或是留空篩選全部..."
+              placeholder="輸入個股代號、名稱、產業關鍵字如 '半導體'、'2330' 篩選..."
               className="w-full bg-[#1E222D] border border-[#2D3139] rounded-lg pl-10 pr-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#2962FF] focus:ring-1 focus:ring-[#2962FF] transition-all font-sans"
               id="theme-keyword-input"
             />
@@ -73,24 +62,6 @@ export default function ScreenerControl({
                 清除
               </button>
             )}
-          </div>
-          
-          {/* Quick theme buttons */}
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            <span className="text-[11px] text-slate-500 self-center mr-1">推薦題材:</span>
-            {quickTags.map((tag) => (
-              <button
-                key={tag}
-                onClick={() => setKeyword(tag)}
-                className={`text-[11px] px-2.5 py-0.5 rounded-full border transition-all cursor-pointer ${
-                  keyword === tag
-                    ? "bg-[#2962FF]/20 border-[#2962FF] text-[#2962FF] font-semibold"
-                    : "bg-[#1E222D] border-[#2D3139] text-slate-400 hover:bg-[#2D3139]"
-                }`}
-              >
-                {tag}
-              </button>
-            ))}
           </div>
 
           {/* Advanced Indicator Filters */}

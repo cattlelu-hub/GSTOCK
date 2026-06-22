@@ -12,7 +12,8 @@ import ScreenerControl from "./components/ScreenerControl";
 import StockTable from "./components/StockTable";
 import StockChart from "./components/StockChart";
 import GeminiReport from "./components/GeminiReport";
-import { TrendingUp, RefreshCw, BarChart3, Radio, Info } from "lucide-react";
+import AiStudioGuide from "./components/AiStudioGuide";
+import { TrendingUp, RefreshCw, BarChart3, Radio, Info, Sparkles } from "lucide-react";
 
 // Helper to compute Taiwan time status (UTC+8)
 const getTaiwanMarketStatus = () => {
@@ -85,12 +86,29 @@ export default function App() {
   const [avoidOverheated, setAvoidOverheated] = React.useState<boolean>(true); // Default to avoid overheated stocks
   const [countdown, setCountdown] = React.useState<number>(5);
   const [twStatus, setTwStatus] = React.useState(getTaiwanMarketStatus());
+  const [isAiGuideOpen, setIsAiGuideOpen] = React.useState<boolean>(false);
 
   const handleSetKeyword = (val: string) => {
     setKeyword(val);
     if (val.trim() !== "") {
       setShowOnlyMatches(false);
     }
+  };
+
+  const handleSelectIndustry = (industry: string) => {
+    setKeyword(industry);
+    setShowOnlyMatches(false);
+  };
+
+  const handleShowKLine = (stock: Stock) => {
+    setSelectedStock(stock);
+    setChartTab("kline");
+    setTimeout(() => {
+      const panel = document.getElementById("stock-chart-section") || document.getElementById(`stock-chart-panel-${stock.symbol}`);
+      if (panel) {
+        panel.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 120);
   };
 
   // Yahoo Finance synchronization states
@@ -101,6 +119,9 @@ export default function App() {
   // Target-stock dynamic resolver states
   const [isResolvingSymbol, setIsResolvingSymbol] = React.useState<boolean>(false);
   const [resolvingStatus, setResolvingStatus] = React.useState<string>("");
+
+  // Shared active chart tab state spanning lightweight-charts, TradingView kline, and potential scoring
+  const [chartTab, setChartTab] = React.useState<"chart" | "kline" | "potential">("chart");
 
   // Update Taiwan Clock status every second
   React.useEffect(() => {
@@ -126,6 +147,62 @@ export default function App() {
       setSelectedStock(market[0]);
     }
   }, []);
+
+  // 背景自動同步點擊個股的真實 Yahoo 歷史 K 線與最新價格
+  React.useEffect(() => {
+    if (!selectedStock) return;
+    if (selectedStock.isYahooSynced) return;
+
+    let isAborted = false;
+
+    const syncSingleStockRealTime = async () => {
+      try {
+        const history = await fetchYahooStockHistory(selectedStock.symbol);
+        if (isAborted) return;
+        
+        if (history && history.length > 0) {
+          const indicators = computeIndicators(history);
+          const lastH = history[history.length - 1];
+          const prevH = history[history.length - 2] || lastH;
+          const changePerc = Math.round(((lastH.close - prevH.close) / prevH.close) * 10000) / 100;
+          
+          const updatedStock: Stock = {
+            ...selectedStock,
+            history,
+            indicators,
+            changePercentage: changePerc,
+            todayClose: lastH.close,
+            todayOpen: lastH.open,
+            todayHigh: lastH.high,
+            todayLow: lastH.low,
+            todayVolume: lastH.volume,
+            isYahooSynced: true
+          };
+
+          // 1. 同步更新 stocks 清單中的對應股票
+          setStocks((prev) => 
+            prev.map((s) => s.symbol === selectedStock.symbol ? updatedStock : s)
+          );
+          
+          // 2. 同步更新當前選中的股票，重繪 K 線
+          setSelectedStock((current) => {
+            if (current && current.symbol === selectedStock.symbol) {
+              return updatedStock;
+            }
+            return current;
+          });
+        }
+      } catch (e) {
+        console.warn(`自動背景聯網更新台股真實日K失敗 for ${selectedStock.symbol}:`, e);
+      }
+    };
+
+    const t = setTimeout(syncSingleStockRealTime, 150);
+    return () => {
+      isAborted = true;
+      clearTimeout(t);
+    };
+  }, [selectedStock?.symbol, selectedStock?.isYahooSynced]);
 
   // Auto-select and refresh stock details if keyword matches a stock symbol or name
   React.useEffect(() => {
@@ -376,7 +453,7 @@ export default function App() {
     runOnDemandSync();
   }, [selectedStock?.symbol]);
 
-  // 3. startLiveUpdateEngine() - 擬真與真實雙引擎盤中 Tick 跳動定時器 (每 2 秒執行一次)
+  // 3. startLiveUpdateEngine() - 擬真與真實雙引擎盤中 Tick 跳動定時器 (策略研發基地模式已關閉盤中跳動，保持盤後股價穩定性)
   React.useEffect(() => {
     const liveTimer = setInterval(() => {
       setCountdown((prev) => {
@@ -390,8 +467,8 @@ export default function App() {
         return currentStocks.map((stock) => {
           // If this stock is the active selected stock, perform higher-amplitude shadow ticks
           const isSelected = selectedStock && stock.symbol === selectedStock.symbol;
-          const isTrading = twStatus.isTradingHours;
-          const shouldTick = isTrading;
+          // 💡 策略研發與複習基地模式：關閉盤中即時跳動以確保數據正確性、一致性與技術乖離率穩定度。
+          const shouldTick = false;
 
           if (!shouldTick) return stock;
 
@@ -433,53 +510,10 @@ export default function App() {
     return () => clearInterval(liveTimer);
   }, [selectedStock, twStatus.isTradingHours]);
 
-  // 4. Periodic background real-time quote sync (every 14s) from Yahoo APIs directly
+  // 4. Periodic background real-time quote sync (策略研發基地模式已關閉即時滾動串流，以穩定的盤後日 K 線與成交量歷史數據為主)
   React.useEffect(() => {
-    if (!selectedStock) return;
-
-    const tickerInterval = setInterval(async () => {
-      try {
-        const liveTick = await fetchYahooRealTimeTick(selectedStock.symbol);
-        if (liveTick) {
-          setStocks((prevStocks) =>
-            prevStocks.map((s) => {
-              if (s.symbol === selectedStock.symbol) {
-                const updatedHistory = [...s.history];
-                const todayIdx = updatedHistory.length - 1;
-                if (todayIdx >= 0) {
-                  const updatedToday = { ...updatedHistory[todayIdx] };
-                  updatedToday.close = liveTick.price;
-                  updatedToday.high = Math.max(updatedToday.high, liveTick.high);
-                  updatedToday.low = Math.min(updatedToday.low, liveTick.low);
-                  updatedHistory[todayIdx] = updatedToday;
-                }
-                const lastIndices = updatedHistory.length - 1;
-                const yesterdayClose = updatedHistory[lastIndices - 1]?.close || s.todayClose;
-                const changePercentage = Math.round(((liveTick.price - yesterdayClose) / yesterdayClose) * 10000) / 100;
-                const indicators = computeIndicators(updatedHistory);
-
-                return {
-                  ...s,
-                  todayClose: liveTick.price,
-                  todayHigh: Math.max(s.todayHigh, liveTick.high),
-                  todayLow: Math.min(s.todayLow, liveTick.low),
-                  todayVolume: liveTick.volume || s.todayVolume,
-                  changePercentage,
-                  history: updatedHistory,
-                  indicators,
-                  isYahooSynced: true
-                };
-              }
-              return s;
-            })
-          );
-        }
-      } catch (e) {
-        console.warn("Real-time background tick sync failed:", e);
-      }
-    }, 14000);
-
-    return () => clearInterval(tickerInterval);
+    // 已從原本的 14 秒定期串流拉取，更改為僅在用戶手動或點擊切换時進行完整日K後台同步。
+    return () => {};
   }, [selectedStock?.symbol]);
 
   // Make sure selected stock stays fully up-to-date with computed ticking prices
@@ -498,73 +532,19 @@ export default function App() {
       <header className="bg-[#131722] border-b border-[#2D3139] shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="bg-[#F23645] px-1.5 py-0.5 rounded text-sm text-white font-bold tracking-tight">
-              TW
+            <div className="bg-[#2962FF] px-1.5 py-0.5 rounded text-sm text-white font-bold tracking-tight">
+              GSTOCK
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div>
                 <h1 className="text-md sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
-                  量化選股專業版
-                  <span className="bg-[#089981]/10 text-[#089981] border border-[#089981]/30 text-[9px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1 animate-pulse">
-                    <Radio size={8} /> 盤中監控
-                  </span>
+                  量化選股系統
                 </h1>
-                <p className="text-xs text-slate-500">TWSE MIS 證交所即時資訊行情連動・強勢均線與量能多頭排列選股系統</p>
+                <p className="text-xs text-slate-400">💡 整合多頭排列均線、成交量與乖離率技術分析選股，提供高勝率量化策略研發輔助。</p>
               </div>
-              <nav className="hidden md:flex gap-4 text-xs font-medium border-l border-[#2D3139] pl-4">
-                <span className="text-[#2962FF] border-b-2 border-[#2962FF] pb-1 cursor-pointer">盤中監控</span>
-                <span className="text-slate-500 hover:text-slate-300 cursor-pointer">回測分析</span>
-                <span className="text-slate-500 hover:text-slate-300 cursor-pointer">自選組合</span>
-              </nav>
             </div>
           </div>
           
-          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 text-xs font-mono">
-            {/* Live Clock and Status Indicator */}
-            <div className="flex items-center gap-2 bg-[#1E222D] px-2.5 py-1.5 rounded border border-[#2D3139]">
-              <span className="flex h-2 w-2 relative">
-                {twStatus.isTradingHours ? (
-                  <>
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#089981] opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#089981]"></span>
-                  </>
-                ) : (
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#eab308]"></span>
-                )}
-              </span>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px]">
-                  <span className="text-slate-500 font-bold">台北時間:</span>
-                  <span className="text-slate-300 font-bold">{twStatus.dateString} {twStatus.weekdayString} {twStatus.timeString}</span>
-                </div>
-                <div className="text-[9px] text-slate-500 flex items-center gap-1">
-                  <span>台股盤中時段: 一至五 09:00-13:30</span>
-                  <span className={twStatus.isTradingHours ? "text-[#089981] font-semibold animate-pulse" : "text-yellow-500 font-semibold"}>
-                    ({twStatus.isTradingHours ? "交易中" : "已收盤"})
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Market Connection Indicator */}
-            <div className="flex bg-[#1E222D] px-2.5 py-1.5 rounded border border-[#2D3139] items-center text-[10px] text-emerald-400 font-mono gap-1.5 select-none" title="直連台灣證券交易所行情，休市期間静止">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#0bbd9f] animate-pulse"></span>
-              <span>證交所即時串流連線中</span>
-            </div>
-
-            {/* Component statistics indicator */}
-            <div className="hidden lg:flex items-center bg-[#1E222D] px-2.5 py-2 rounded border border-[#2D3139] text-[10px] gap-1">
-              <span className="text-slate-500">數據來源:</span>
-              <a 
-                href="https://mis.twse.com.tw/stock/index?lang=zhHant" 
-                target="_blank" 
-                rel="noreferrer" 
-                className="text-white hover:text-[#0bbd9f] font-bold transition-colors underline decoration-dotted"
-              >
-                證交所 MIS (台股所有標的) 🌐
-              </a>
-            </div>
-          </div>
         </div>
       </header>
 
@@ -606,6 +586,8 @@ export default function App() {
               onSelectStock={setSelectedStock}
               showOnlyMatches={showOnlyMatches}
               setShowOnlyMatches={setShowOnlyMatches}
+              onSelectIndustry={handleSelectIndustry}
+              onShowKLine={handleShowKLine}
             />
           </section>
 
@@ -614,6 +596,8 @@ export default function App() {
             <StockChart
               selectedStock={activeSelectedStock}
               filterResults={filterResults}
+              chartTab={chartTab}
+              setChartTab={setChartTab}
             />
           </section>
         </div>
@@ -624,6 +608,11 @@ export default function App() {
           marketTime={`${twStatus.dateString} ${twStatus.timeString}`}
         />
       </main>
+
+      <AiStudioGuide 
+        isOpen={isAiGuideOpen}
+        onClose={() => setIsAiGuideOpen(false)}
+      />
 
       {/* Footer credits disclaimer (No AI clutter or unrequested credit rails, keeps the page content extremely professional) */}
       <footer className="bg-[#131722] text-[#D1D4DC] text-[10px] py-4 border-t border-[#2D3139] font-mono">

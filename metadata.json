@@ -1,6 +1,8 @@
 {
-  "name": "台股即時選股與產業監控系統",
-  "description": "提供即時產業焦點看板、高階技術面交叉複合選股（MA、洗盤、量能、MACD、乖離率）以及證交所即時資訊 K 線均線圖連動分析看盤系統。",
+  "name": "GSTOCK 量化選股系統",
+  "description": "專注於台股歷史數據同步與技術指標分析的量化策略研發工具，串接日K與專業 TradingView K 線走勢圖。",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

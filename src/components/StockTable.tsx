@@ -9,6 +9,8 @@ interface StockTableProps {
   onSelectStock: (stock: Stock) => void;
   showOnlyMatches: boolean;
   setShowOnlyMatches: (val: boolean) => void;
+  onSelectIndustry?: (industry: string) => void;
+  onShowKLine?: (stock: Stock) => void;
 }
 
 type SortKey = "symbol" | "name" | "todayClose" | "changePercentage" | "todayVolume" | "bias20" | "industry" | "isMatch";
@@ -21,6 +23,8 @@ export default function StockTable({
   onSelectStock,
   showOnlyMatches,
   setShowOnlyMatches,
+  onSelectIndustry,
+  onShowKLine,
 }: StockTableProps) {
   const [sortKey, setSortKey] = React.useState<SortKey>("changePercentage");
   const [sortOrder, setSortOrder] = React.useState<SortOrder>("desc");
@@ -144,7 +148,7 @@ export default function StockTable({
       {/* Table Header Controls */}
       <div className="p-4 border-b border-[#2D3139] bg-[#131722]/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-white">📈 個股即時狀態看板</span>
+          <span className="text-sm font-bold text-white">📈 個股行情與量化指標看板</span>
           <span className="text-xs text-slate-500">({listToRender.length} 檔顯示中)</span>
         </div>
 
@@ -312,8 +316,22 @@ export default function StockTable({
                           突破10日
                         </span>
                       )}
+
+                      {/* 🔍 拉出技術 K 線按鈕 */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onShowKLine) {
+                            onShowKLine(stock);
+                          }
+                        }}
+                        className="ml-auto inline-flex items-center gap-1 text-[9.5px] px-1.5 py-0.5 rounded bg-orange-950/40 hover:bg-orange-600 text-orange-400 hover:text-white border border-orange-500/30 transition-all font-bold cursor-pointer"
+                        title="拉出 TradingView K線圖與量化複習"
+                      >
+                        📈 K線
+                      </button>
                     </td>
- 
+                    
                     {/* Price */}
                     <td className={`p-3 text-right font-mono font-bold ${textPriceColor}`}>
                       {stock.todayClose.toFixed(2)}
@@ -339,7 +357,16 @@ export default function StockTable({
  
                     {/* Industry */}
                     <td className="p-3">
-                      <span className="text-[#D1D4DC] bg-[#1E222D] px-2 py-0.5 rounded text-[10px]">
+                      <span 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onSelectIndustry) {
+                            onSelectIndustry(stock.industry);
+                          }
+                        }}
+                        className="text-[#2962FF] hover:text-white bg-[#2962FF]/10 hover:bg-[#2962FF] px-2 py-0.5 rounded text-[10px] cursor-pointer font-bold transition-all whitespace-nowrap inline-block"
+                        title={`點擊快速篩選【${stock.industry}】推薦題材個股`}
+                      >
                         {stock.industry}
                       </span>
                     </td>

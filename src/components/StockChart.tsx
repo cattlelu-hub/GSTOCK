@@ -9,12 +9,21 @@ import { evaluateStockPotential, StockFinancialData, ScoringResult } from "../ut
 interface StockChartProps {
   selectedStock: Stock | null;
   filterResults: FilterResult[];
+  chartTab?: "chart" | "kline" | "potential";
+  setChartTab?: (val: "chart" | "kline" | "potential") => void;
 }
 
-export default function StockChart({ selectedStock, filterResults }: StockChartProps) {
+export default function StockChart({ 
+  selectedStock, 
+  filterResults,
+  chartTab,
+  setChartTab
+}: StockChartProps) {
   const chartContainerRef = React.useRef<HTMLDivElement>(null);
   const chartRef = React.useRef<any>(null);
-  const [activeTab, setActiveTab] = React.useState<"chart" | "potential">("chart");
+  const [localTab, setLocalTab] = React.useState<"chart" | "kline" | "potential">("chart");
+  const activeTab = chartTab !== undefined ? chartTab : localTab;
+  const setActiveTab = setChartTab !== undefined ? setChartTab : setLocalTab;
   const [activeExplainDim, setActiveExplainDim] = React.useState<string | null>(null);
 
   // References for series to allow flicker-free real-time ticking
@@ -25,9 +34,8 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
   const line20SeriesRef = React.useRef<any>(null);
   const line60SeriesRef = React.useRef<any>(null);
 
-  // Automatically switch tab to chart when symbol changes
+  // Reset explanation dimension when symbol changes
   React.useEffect(() => {
-    setActiveTab("chart");
     setActiveExplainDim(null);
   }, [selectedStock?.symbol]);
 
@@ -288,7 +296,7 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
       line20SeriesRef.current = null;
       line60SeriesRef.current = null;
     };
-  }, [selectedStock?.symbol]);
+  }, [selectedStock?.symbol, selectedStock?.history]);
 
   // Micro secondary hook to perform high-speed updates when any trade tick updates prices and volumes
   React.useEffect(() => {
@@ -432,7 +440,7 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
   };
 
   return (
-    <div className="bg-[#131722] border border-[#2D3139] rounded-xl overflow-hidden shadow-lg flex flex-col h-full text-[#D1D4DC]" id={`stock-chart-panel-${selectedStock.symbol}`}>
+    <div className="bg-[#131722] border border-[#2D3139] rounded-xl overflow-hidden shadow-lg flex flex-col h-full text-[#D1D4DC]" id="stock-chart-section">
       {/* Chart Top Summary Bar */}
       <div className="p-4 bg-[#1E222D] border-b border-[#2D3139] flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -489,7 +497,17 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
                   : "text-slate-400 hover:text-white hover:bg-[#1E222D]"
               }`}
             >
-              📊 即時技術看盤
+              📊 盤後技術指標 (日K)
+            </button>
+            <button
+              onClick={() => setActiveTab("kline")}
+              className={`px-3 py-1.5 rounded text-xs font-semibold cursor-pointer transition-all flex items-center gap-1.5 ${
+                activeTab === "kline"
+                  ? "bg-[#E65100] text-white shadow-md shadow-orange-950/20"
+                  : "text-slate-400 hover:text-white hover:bg-[#1E222D]"
+              }`}
+            >
+              📈 TV 專業 K 線圖
             </button>
             <button
               onClick={() => setActiveTab("potential")}
@@ -526,7 +544,7 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
         </div>
       </div>
 
-      {activeTab === "chart" ? (
+      {activeTab === "chart" && (
         <>
           {/* Embedded Chart Canvas */}
           <div className="relative p-2 bg-[#0B0E14] flex-1">
@@ -610,7 +628,29 @@ export default function StockChart({ selectedStock, filterResults }: StockChartP
             </div>
           </div>
         </>
-      ) : (
+      )}
+
+      {activeTab === "kline" && selectedStock && (
+        <div className="flex-1 w-full bg-[#0B0E14] p-3 flex flex-col animate-fadeIn" style={{ minHeight: "440px" }}>
+          <div className="text-xs text-orange-400 font-bold mb-2 flex items-center justify-between font-mono">
+            <span className="flex items-center gap-1.5">📈 TradingView 專業日K線圖 (夜間模式)</span>
+            <span className="text-[10px] text-slate-500 font-mono">代號: {selectedStock.symbol} ({selectedStock.name})</span>
+          </div>
+          <div className="flex-1 bg-[#131722] rounded-lg overflow-hidden relative border border-[#2D3139] shadow-inner" style={{ minHeight: "380px", height: "100%" }}>
+            <iframe
+              src={`https://s.tradingview.com/widgetembed/?frameElementId=tradingview_chart&symbol=${["5347", "3529", "3264", "3324", "2636", "3176", "4105", "4107", "4119", "4147", "4162", "4174", "4743", "6446", "1752", "1760", "1786", "4104"].includes(selectedStock.symbol.trim()) ? "TWO" : "TWSE"}%3A${selectedStock.symbol.trim()}&interval=D&symboledit=0&saveimage=1&toolbarbg=f1f3f6&studies=%5B%5D&theme=dark&style=1&timezone=Asia%2FTaipei`}
+              width="100%"
+              height="100%"
+              frameBorder="0"
+              allowFullScreen
+              title={`TV-Chart-${selectedStock.symbol}`}
+              className="absolute inset-0 w-full h-full"
+            />
+          </div>
+        </div>
+      )}
+
+      {activeTab === "potential" && (
         // The Multi-Dimension Scorecard view layout
         <div className="p-4 bg-[#0B0E14] flex-1 overflow-y-auto max-h-[500px] flex flex-col gap-4">
           
